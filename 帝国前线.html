@@ -1,0 +1,4290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>帝国前线 — 六边形随机大陆回合制策略游戏</title>
+  <style>
+/* style.css — 帝国前线 界面样式 */
+:root {
+  --bg: #0e1620;
+  --panel: #16202c;
+  --panel2: #1c2936;
+  --border: #2a3a4d;
+  --text: #dbe6f0;
+  --dim: #7e93a8;
+  --accent: #4ade80;
+  --gold: #ffd54a;
+  --danger: #f87171;
+  --blue: #60a5fa;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+#app { height: 100vh; display: flex; flex-direction: column; }
+
+/* ---------- 顶部栏 ---------- */
+#topbar {
+  height: 48px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.brand { font-weight: 800; font-size: 16px; letter-spacing: 1px; color: var(--gold); }
+.top-item { white-space: nowrap; }
+.top-spacer { flex: 1; }
+.top-btn { height: 30px; }
+
+/* ---------- 中部 ---------- */
+#main { flex: 1; display: flex; min-height: 0; }
+
+#sidebar {
+  width: 292px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px;
+}
+#canvas-wrap { flex: 1; position: relative; min-width: 0; }
+#game-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+#phase-banner {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.7); padding: 8px 18px; border-radius: 8px;
+  font-size: 15px; color: var(--gold); pointer-events: none;
+}
+#event-panel {
+  width: 300px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.panel-title {
+  padding: 10px 12px; font-weight: 700; font-size: 13px;
+  border-bottom: 1px solid var(--border); color: var(--dim);
+}
+#event-list { flex: 1; overflow-y: auto; padding: 8px 10px; }
+.event-item {
+  font-size: 12.5px; padding: 4px 6px; border-radius: 4px;
+  border-bottom: 1px dashed rgba(255,255,255,0.06);
+}
+.ev-turn { color: var(--blue); font-weight: 700; margin-right: 4px; }
+
+/* ---------- 底部栏 ---------- */
+#bottombar {
+  height: 50px;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 14px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+#hint { color: var(--dim); flex: 1; }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.12s, transform 0.05s;
+}
+.btn:hover { filter: brightness(1.2); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: #1d5e3c; border-color: #2c7a4f; color: #eafff2; }
+.btn.danger { border-color: #8a3c3c; color: var(--danger); }
+.btn.danger-btn { background: #5a2a2a; border-color: #8a3c3c; color: #ffd7d7; }
+.btn.small { padding: 4px 9px; font-size: 12px; }
+.btn.big { width: 100%; padding: 12px; font-size: 15px; margin-top: 14px; }
+.btn.disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.disabled:hover { filter: none; }
+.action-btn { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; text-align: left; }
+.action-btn .cost { color: var(--gold); font-size: 12px; }
+.btn.block { width: 100%; margin-bottom: 6px; }
+.btn-grid { display: flex; flex-direction: column; gap: 0; }
+kbd {
+  background: #0b1117; border: 1px solid var(--border); border-bottom-width: 2px;
+  border-radius: 4px; padding: 1px 6px; font-size: 11px; font-family: inherit;
+}
+
+/* ---------- 侧栏信息 ---------- */
+.hint-text { color: var(--dim); font-size: 13px; line-height: 1.9; padding: 6px 0; }
+
+/* ---------- 可折叠面板（微信置顶式：点击标题展开/收起） ---------- */
+.coll { margin-bottom: 12px; }
+.coll-head {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; cursor: pointer; user-select: none;
+  font-weight: 700; font-size: 13px;
+}
+.coll-head:hover { filter: brightness(1.15); }
+.coll-title { color: var(--text); }
+.coll-arrow { color: var(--dim); font-size: 12px; transition: transform 0.18s ease; }
+.coll-body { padding: 6px 2px 0; }
+.coll.collapsed .coll-arrow { transform: rotate(-90deg); }
+.coll.collapsed .coll-body { display: none; }
+.tile-name { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
+.tile-meta { font-size: 13px; color: var(--text); margin-bottom: 4px; opacity: 0.92; }
+.army-line { font-size: 14px; margin: 8px 0 4px; padding: 6px 8px; background: var(--panel2); border-radius: 6px; }
+.section-title {
+  font-size: 12px; color: var(--dim); font-weight: 700; letter-spacing: 1px;
+  margin: 14px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px;
+}
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin-right: 3px; }
+
+/* ---------- 遮罩 / 弹窗 ---------- */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(6, 10, 16, 0.78);
+  backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50;
+}
+.overlay.hidden { display: none; }
+.modal {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 26px 30px;
+  width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.modal.wide { width: 760px; }
+.modal h1 { font-size: 30px; text-align: center; color: var(--gold); }
+.modal h2 { font-size: 20px; margin-bottom: 12px; }
+.modal .sub { text-align: center; color: var(--dim); margin: 6px 0 16px; font-size: 13px; }
+.modal-btns { display: flex; justify-content: center; gap: 10px; margin-top: 18px; }
+.dim { color: var(--dim); font-size: 12px; }
+.foot { margin-top: 16px; text-align: center; }
+
+/* ---------- 菜单表单 ---------- */
+.menu-form { margin-top: 8px; }
+.form-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.form-row label { width: 84px; font-size: 13px; color: var(--dim); }
+.form-row select, .form-row input[type="number"] {
+  background: var(--panel2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 10px; font-size: 13px; font-family: inherit;
+}
+.form-row input[type="range"] { flex: 1; }
+.form-row input[type="number"] { width: 90px; }
+#nation-count-label { font-size: 13px; color: var(--gold); min-width: 40px; }
+
+#nation-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+.nation-chip {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--panel2);
+  transition: border-color 0.12s;
+}
+.nation-chip::before {
+  content: ''; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--nc);
+}
+.nation-chip:hover { border-color: var(--blue); }
+.nation-chip.selected { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(255,213,74,0.25); }
+
+/* ---------- 外交 ---------- */
+.dip-row {
+  display: grid; grid-template-columns: 1.2fr 0.7fr 0.9fr 1fr auto;
+  gap: 10px; align-items: center;
+  padding: 10px 8px; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.dip-nation { font-weight: 700; }
+.dip-rel { color: var(--blue); }
+.dip-power { color: var(--dim); }
+.dip-status { color: var(--dim); font-size: 12px; }
+.dip-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* ---------- 存档 ---------- */
+.slot-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 8px; border-bottom: 1px solid var(--border);
+}
+.slot-info { flex: 1; font-size: 13px; }
+
+/* ---------- 结算 ---------- */
+.victory-title { font-size: 40px; font-weight: 900; text-align: center; margin: 6px 0 10px; }
+.victory-title.win { color: var(--gold); }
+.victory-title.lose { color: var(--danger); }
+#victory-sub { text-align: center; font-size: 15px; margin-bottom: 14px; }
+.victory-stats {
+  background: var(--panel2); border-radius: 8px;
+  padding: 14px 18px; font-size: 14px; line-height: 2;
+  text-align: center;
+}
+
+/* ---------- Toast ---------- */
+#toast {
+  position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: rgba(10, 18, 28, 0.94);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 14px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 100;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 科技树 ---------- */
+/* 科技树：整棵树占更大屏幕，拖拽平移（钢铁雄心4式），关闭按钮固定在右上角 */
+.tech-modal { width: 92vw; max-width: 1500px; height: 88vh; display: flex; flex-direction: column; padding: 18px 20px; }
+#tech-overlay .modal-close { position: fixed; top: 12px; right: 14px; z-index: 10; }
+#tech-viewport {
+  flex: 1; min-height: 0; overflow: auto; cursor: grab;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--panel);
+  margin-top: 12px;
+  /* 隐藏滚动条：用拖拽平移代替 */
+  scrollbar-width: none;
+}
+#tech-viewport::-webkit-scrollbar { width: 0; height: 0; display: none; }
+#tech-viewport.dragging { cursor: grabbing; }
+#tech-canvas {
+  display: flex; flex-direction: column; gap: 14px; width: max-content; min-width: 100%;
+  padding: 12px 14px 16px;
+}
+.tech-track { background: var(--panel2); border-radius: 8px; padding: 12px 14px; white-space: nowrap; }
+.tech-track-title { font-weight: 800; font-size: 15px; margin-bottom: 10px; color: var(--gold); }
+.tech-node {
+  padding: 7px 10px; border-radius: 6px; font-size: 13px;
+  border: 1px solid var(--border); margin-bottom: 6px;
+  background: var(--panel); color: var(--dim);
+}
+.tech-node.owned { color: var(--text); border-color: #2c7a4f; }
+.tech-node.next { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 8px rgba(255,213,74,0.25); }
+.tech-done { color: var(--accent); font-size: 13px; padding-top: 6px; }
+.tech-track .btn { margin-top: 4px; margin-right: 4px; }
+.tech-slider-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--dim); }
+.tech-slider-row label { flex: none; }
+.tech-slider { flex: 1; accent-color: #1d5e3c; }
+.tech-slider-val { flex: none; min-width: 88px; text-align: right; font-weight: 700; color: var(--gold); }
+.tech-slider-hint { font-size: 11px; color: var(--dim); margin-top: 2px; }
+/* 每条科技线独占一行：节点从左往右横向排布 */
+.tech-nodes-row { display: flex; flex-direction: row; gap: 8px; padding-bottom: 4px; align-items: stretch; }
+.tech-nodes-row .tech-node { min-width: 110px; max-width: 150px; flex: 0 0 auto; white-space: normal; cursor: pointer; }
+.tech-node.locked { opacity: 0.45; border-style: dashed; }
+.tech-node.locked:hover { opacity: 0.8; }
+.tech-req { font-size: 10px; color: #ff9a6b; margin-top: 4px; line-height: 1.25; }
+.jump-highlight { box-shadow: 0 0 14px var(--gold); border-color: var(--gold) !important; }
+.tech-open-lock { font-size: 12px; color: #ff9a6b; background: rgba(255,120,80,0.1); border: 1px dashed #ff7a5c; border-radius: 6px; padding: 5px 8px; margin-bottom: 6px; cursor: pointer; }
+.tech-open-lock:hover { background: rgba(255,120,80,0.2); }
+.slider-wrap { padding: 12px 4px; }
+.slider-wrap input { width: 100%; accent-color: #1d5e3c; }
+.slider-wrap #slider-value { text-align: center; font-size: 22px; font-weight: 800; color: var(--gold); margin-top: 8px; }
+.build-tip {
+  position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%);
+  background: rgba(10,18,26,0.94); color: var(--text); border: 1px solid var(--gold);
+  border-radius: 8px; padding: 8px 14px; font-size: 13px; max-width: 460px;
+  opacity: 0; transition: opacity 0.3s ease; pointer-events: none; z-index: 300; text-align: center;
+}
+.build-tip.show { opacity: 1; }
+
+/* ---------- 教程面板 ---------- */
+#tutorial-panel {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: 64px;
+  background: rgba(10, 18, 28, 0.96);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px 20px;
+  width: min(640px, 92vw);
+  z-index: 40;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  font-size: 14px;
+  line-height: 1.8;
+}
+#tutorial-panel.hidden { display: none; }
+#tutorial-text b { color: var(--gold); }
+.tutorial-body { color: var(--text); font-size: 13px; }
+.tutorial-btns { display: flex; gap: 10px; margin-top: 10px; justify-content: flex-end; }
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a3a4d; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #3a4f66; }
+
+/* ---------- 面板折叠 ---------- */
+#sidebar { transition: width 0.22s ease; }
+#sidebar.collapsed { width: 0; padding: 0; overflow: hidden; border-right: none; }
+#event-panel { transition: width 0.22s ease; }
+#event-panel.collapsed { width: 0; padding: 0; overflow: hidden; border-left: none; }
+
+/* ---------- 成就面板 ---------- */
+.ach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.ach-card { display: flex; align-items: center; gap: 10px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; opacity: 0.55; }
+.ach-card.owned { opacity: 1; border-color: var(--gold); }
+.ach-icon { font-size: 24px; }
+.ach-name { font-weight: 800; font-size: 13px; }
+.ach-desc { font-size: 12px; color: var(--dim); }
+.ach-state { margin-left: auto; font-size: 16px; color: var(--gold); }
+
+/* ---------- 政策面板 ---------- */
+.policy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.policy-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.policy-card.owned { border-color: #2c7a4f; }
+.policy-name { font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+.policy-lvl { font-weight: 700; color: var(--gold); font-size: 12px; }
+.policy-desc { font-size: 12.5px; color: var(--dim); line-height: 1.7; margin-bottom: 6px; }
+.pol-dots { display: flex; gap: 6px; margin: 6px 0 10px; }
+.pol-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--panel); border: 1px solid var(--border); }
+.pol-dot.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 6px rgba(255,213,74,0.5); }
+.policy-owned { color: var(--accent); font-size: 12px; }
+.policy-enact { padding: 4px 12px; }
+
+/* ---------- 弹窗右上角圆形关闭按钮 ---------- */
+.modal-close {
+  position: absolute; top: 12px; right: 12px;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--panel2); border: 1px solid var(--border);
+  color: var(--text); font-size: 15px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.modal-close:hover { background: #402c2c; border-color: var(--danger); color: var(--danger); }
+
+</style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- 顶部信息栏 -->
+    <div id="topbar">
+      <div class="brand">🏰 帝国前线</div>
+      <div id="turn-info" class="top-item">回合 1</div>
+      <div id="nation-info" class="top-item">—</div>
+      <div id="treasury" class="top-item">💰 0</div>
+      <div id="era-info" class="top-item">科技 —</div>
+      <div class="top-spacer"></div>
+      <button id="btn-toggle-sidebar" class="btn small top-btn" title="收起/展开左侧面板">◀ 面板</button>
+      <button id="btn-toggle-event" class="btn small top-btn" title="收起/展开事件日志">日志 ▶</button>
+      <button id="btn-diplomacy" class="btn small top-btn">外交</button>
+      <button id="btn-save" class="btn small top-btn">存档</button>
+      <button id="btn-sound" class="btn small top-btn">🔊</button>
+      <button id="btn-achievements" class="btn small top-btn" title="成就">🏆</button>
+      <button id="btn-menu" class="btn small top-btn">菜单</button>
+    </div>
+
+    <!-- 中部：侧栏 / 地图 / 事件 -->
+    <div id="main">
+      <div id="sidebar">
+        <div id="tile-panel"></div>
+      </div>
+      <div id="canvas-wrap">
+        <canvas id="game-canvas"></canvas>
+        <div id="phase-banner"></div>
+      </div>
+      <div id="event-panel">
+        <div class="panel-title">📜 事件日志</div>
+        <div id="event-list"></div>
+      </div>
+    </div>
+
+    <!-- 底部栏 -->
+    <div id="bottombar">
+      <button id="btn-endturn" class="btn primary">结束回合 <kbd>E</kbd></button>
+      <span id="hint"></span>
+    </div>
+
+    <div id="toast"></div>
+
+    <!-- 教程面板 -->
+    <div id="tutorial-panel" class="hidden">
+      <div id="tutorial-text"></div>
+      <div class="tutorial-btns">
+        <button id="btn-tut-next" class="btn primary">下一步 ▶</button>
+        <button id="btn-tut-skip" class="btn">跳过教程</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 开始 / 暂停菜单 -->
+  <div id="menu-overlay" class="overlay hidden">
+    <div class="modal">
+      <h1>🏰 帝国前线</h1>
+      <p class="sub">随机苍澜大陆 · 回合制领土征服策略游戏</p>
+      <button id="btn-continue" class="btn primary big" style="display:none">▶ 继续游戏</button>
+      <div class="menu-form">
+        <div class="form-row">
+          <label>选择国家</label>
+          <span class="dim">（共 <span id="nation-count">32</span> 个可玩国家）</span>
+        </div>
+        <div id="nation-picker"></div>
+        <div class="form-row">
+          <label>剧本</label>
+          <select id="scenario"></select>
+        </div>
+        <div class="form-row">
+          <label>难度</label>
+          <select id="difficulty"></select>
+        </div>
+        <div class="form-row">
+          <label>回合上限</label>
+          <input type="number" id="turn-cap" min="0" step="10" value="120">
+          <span class="dim">（0 = 无上限）</span>
+        </div>
+        <button id="btn-start" class="btn primary big">⚔️ 开始新游戏</button>
+        <button id="btn-tutorial" class="btn big">🎓 新手教程（引导式）</button>
+      </div>
+      <div class="section-title">读取存档</div>
+      <div id="menu-save-slots"></div>
+      <p class="dim foot">滚轮缩放地图 · 拖拽平移 · 点击选中/移动 · E 结束回合 · D 外交 · Esc 取消调派</p>
+    </div>
+  </div>
+
+  <!-- 科技树界面 -->
+  <div id="tech-overlay" class="overlay hidden">
+    <div class="modal wide tech-modal">
+      <button id="btn-close-tech" class="modal-close" title="关闭科技树">✕</button>
+      <h2>🔬 科技树 <span class="dim" style="font-size:12px;font-weight:400">（按住空白处拖拽平移 · 每条线一行）</span></h2>
+      <div id="tech-viewport">
+        <div id="tech-canvas"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 政策界面 -->
+  <div id="policy-overlay" class="overlay hidden">
+    <div class="modal wide">
+      <button id="btn-close-policy" class="modal-close" title="关闭政策">✕</button>
+      <h2>📜 国家政策</h2>
+      <p class="dim">一次性研究解锁，长期生效；部分政策有利也有弊。</p>
+      <div class="policy-grid" id="policy-body"></div>
+    </div>
+  </div>
+
+  <!-- 成就界面 -->
+  <div id="achievements-overlay" class="overlay hidden">
+    <div class="modal wide">
+      <button id="btn-close-achievements" class="modal-close" title="关闭成就">✕</button>
+      <h2>🏆 成就</h2>
+      <p class="dim">成就解锁后永久保存。</p>
+      <div class="ach-grid" id="achievements-body"></div>
+    </div>
+  </div>
+
+  <!-- 外交界面 -->
+  <div id="diplomacy-overlay" class="overlay hidden">
+    <div class="modal wide">
+      <button id="btn-close-diplomacy" class="modal-close" title="关闭外交">✕</button>
+      <h2>🌐 外交</h2>
+      <div id="diplomacy-body"></div>
+    </div>
+  </div>
+
+  <!-- 存档界面 -->
+  <div id="save-overlay" class="overlay hidden">
+    <div class="modal">
+      <h2>💾 存档管理</h2>
+      <div id="save-body"></div>
+      <div class="modal-btns">
+        <button id="btn-close-save" class="btn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结算画面 -->
+  <div id="victory-overlay" class="overlay hidden">
+    <div class="modal">
+      <div id="victory-title" class="victory-title">🏆 胜利</div>
+      <div id="victory-sub"></div>
+      <div id="victory-stats" class="victory-stats"></div>
+      <div class="modal-btns">
+        <button id="btn-restart" class="btn primary">回到主菜单</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用滑条弹窗（行进士兵数等） -->
+  <div id="slider-overlay" class="overlay hidden">
+    <div class="modal">
+      <h2 id="slider-title"></h2>
+      <p id="slider-info" class="dim"></p>
+      <div class="slider-wrap">
+        <input type="range" id="slider-input" min="1" max="100" value="50">
+        <div id="slider-value" class="dim">50</div>
+      </div>
+      <div class="modal-btns">
+        <button id="slider-cancel" class="btn">取消</button>
+        <button id="slider-confirm" class="btn primary">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 建筑 buff 悬停提示 -->
+  <div id="build-tip" class="build-tip hidden"></div>
+
+  <!-- 脚本按依赖顺序加载（经典脚本，共享全局作用域） -->
+  <script>
+// config.js — 游戏常量与数据表（v2 真实世界省份版）
+'use strict';
+
+// ============ 地形（gold 为人口收入的乘数） ============
+const TERRAINS = {
+  PLAINS:   { id: 'PLAINS',   name: '平原', color: '#8fbf6b', gold: 1.00, defBonus: 0.05, moveCost: 1 },
+  FOREST:   { id: 'FOREST',   name: '森林', color: '#3f7d45', gold: 0.80, defBonus: 0.20, moveCost: 1 },
+  MOUNTAIN: { id: 'MOUNTAIN', name: '山地', color: '#8a6d5c', gold: 0.60, defBonus: 0.40, moveCost: 1 },
+  DESERT:   { id: 'DESERT',   name: '沙漠', color: '#d9bd8a', gold: 0.70, defBonus: 0.05, moveCost: 1 },
+  TUNDRA:   { id: 'TUNDRA',   name: '冻土', color: '#b9c6cf', gold: 0.50, defBonus: 0.10, moveCost: 1 },
+};
+
+// ============ 单位（req = {t, l} 表示需解锁对应科技子线 l 级；naval=true 海军，air=true 空军） ============
+// soldiers=每次招募的士兵数(100)；terrain=各地形下的攻防乘数（有优有劣）
+const UNIT_TYPES = {
+  swordsman: { id: 'swordsman', name: '刀剑手',   icon: '⚔️', cost: 120, atk: 3,  def: 2,  move: 1, req: { t: 'melee', l: 0}, soldiers: 100,
+    terrain: { PLAINS: 1.1, FOREST: 1.0, MOUNTAIN: 0.8, DESERT: 1.0, TUNDRA: 0.8 } },
+  spearman:  { id: 'spearman',  name: '长枪兵',   icon: '🔱', cost: 140, atk: 3,  def: 4,  move: 1, req: { t: 'melee', l: 2}, soldiers: 100,
+    terrain: { PLAINS: 1.2, FOREST: 1.0, MOUNTAIN: 0.9, DESERT: 1.0, TUNDRA: 0.8 } },
+  infantry:  { id: 'infantry',  name: '步兵',     icon: '🛡️', cost: 180, atk: 5,  def: 4,  move: 1, req: { t: 'melee', l: 3}, soldiers: 100,
+    terrain: { PLAINS: 1.0, FOREST: 1.0, MOUNTAIN: 1.1, DESERT: 0.9, TUNDRA: 1.0 } },
+  archer:    { id: 'archer',    name: '弓箭手',   icon: '🏹', cost: 140, atk: 4,  def: 1,  move: 1, req: { t: 'ranged', l: 0}, soldiers: 100,
+    terrain: { PLAINS: 1.0, FOREST: 1.2, MOUNTAIN: 1.1, DESERT: 0.9, TUNDRA: 0.8 } },
+  crossbow:  { id: 'crossbow',  name: '弩手',     icon: '🎯', cost: 200, atk: 5,  def: 3,  move: 1, req: { t: 'ranged', l: 1}, soldiers: 100,
+    terrain: { PLAINS: 1.0, FOREST: 1.1, MOUNTAIN: 1.2, DESERT: 0.9, TUNDRA: 0.9 } },
+  musketeer: { id: 'musketeer', name: '火枪手',   icon: '🔫', cost: 260, atk: 7,  def: 3,  move: 1, req: { t: 'ranged', l: 2}, soldiers: 100,
+    terrain: { PLAINS: 1.1, FOREST: 0.9, MOUNTAIN: 1.0, DESERT: 1.0, TUNDRA: 0.9 } },
+  rifleman:  { id: 'rifleman',  name: '步枪兵',   icon: '💥', cost: 360, atk: 9,  def: 4,  move: 1, req: { t: 'ranged', l: 3}, soldiers: 100,
+    terrain: { PLAINS: 1.1, FOREST: 1.0, MOUNTAIN: 1.2, DESERT: 1.0, TUNDRA: 1.1 } },
+  cavalry:   { id: 'cavalry',   name: '轻骑兵',   icon: '🐎', cost: 240, atk: 6,  def: 3,  move: 2, req: { t: 'melee', l: 3}, soldiers: 100,
+    terrain: { PLAINS: 1.4, FOREST: 0.7, MOUNTAIN: 0.5, DESERT: 1.2, TUNDRA: 0.8 } },
+  heavycav:  { id: 'heavycav',  name: '重骑兵',   icon: '🐴', cost: 320, atk: 8,  def: 5,  move: 2, req: { t: 'melee', l: 4}, soldiers: 100,
+    terrain: { PLAINS: 1.5, FOREST: 0.6, MOUNTAIN: 0.5, DESERT: 1.1, TUNDRA: 0.8 } },
+  artillery: { id: 'artillery', name: '加农炮',   icon: '💣', cost: 400, atk: 10, def: 1,  move: 1, req: { t: 'artillery', l: 1}, soldiers: 100, siege: true,
+    terrain: { PLAINS: 1.2, FOREST: 0.8, MOUNTAIN: 0.9, DESERT: 1.2, TUNDRA: 0.9 } },
+  siegegun:  { id: 'siegegun',  name: '攻城炮',   icon: '🔨', cost: 480, atk: 11, def: 1,  move: 1, req: { t: 'artillery', l: 2}, soldiers: 100, siege: true,
+    terrain: { PLAINS: 1.2, FOREST: 0.7, MOUNTAIN: 1.0, DESERT: 1.1, TUNDRA: 0.9 } },
+  galley:    { id: 'galley',    name: '桨帆船',     icon: '🛶', cost: 200, atk: 3,  def: 2,  move: 1, req: { t: 'navy', l: 0}, naval: true, soldiers: 100 },
+  caravel:   { id: 'caravel',   name: '轻帆船',     icon: '⛵', cost: 280, atk: 4,  def: 3,  move: 1, req: { t: 'navy', l: 1}, naval: true, soldiers: 100 },
+  galleon:   { id: 'galleon',   name: '盖伦帆船',   icon: '🚢', cost: 400, atk: 6,  def: 5,  move: 1, req: { t: 'navy', l: 2}, naval: true, soldiers: 100 },
+  manowar:   { id: 'manowar',   name: '风帆战列舰', icon: '⛴️', cost: 560, atk: 8, def: 6,  move: 1, req: { t: 'navy', l: 4}, naval: true, soldiers: 100 },
+  biplane:   { id: 'biplane',   name: '侦察机',     icon: '🛩️', cost: 480, atk: 4, def: 1,  move: 2, req: { t: 'air', l: 0}, air: true, soldiers: 100,
+    terrain: { PLAINS: 1.2, FOREST: 1.0, MOUNTAIN: 1.1, DESERT: 1.2, TUNDRA: 1.1 } },
+  fighter:   { id: 'fighter',   name: '战斗机',     icon: '✈️', cost: 800, atk: 8, def: 4,  move: 3, req: { t: 'air', l: 1}, air: true, soldiers: 100,
+    terrain: { PLAINS: 1.2, FOREST: 1.0, MOUNTAIN: 1.1, DESERT: 1.2, TUNDRA: 1.1 } },
+  bomber:    { id: 'bomber',    name: '战略轰炸机', icon: '💣', cost: 1280, atk: 10, def: 2, move: 2, req: { t: 'air', l: 2}, air: true, soldiers: 100, siege: true,
+    terrain: { PLAINS: 1.1, FOREST: 0.9, MOUNTAIN: 1.2, DESERT: 1.1, TUNDRA: 1.0 } },
+  moderninf: { id: 'moderninf', name: '现代步兵', icon: '🎖️', cost: 480, atk: 12, def: 8,  move: 1, req: { t: 'melee', l: 5}, soldiers: 100,
+    terrain: { PLAINS: 1.0, FOREST: 1.0, MOUNTAIN: 1.2, DESERT: 0.9, TUNDRA: 1.0 } },
+  sniper:    { id: 'sniper',    name: '狙击手',   icon: '🔭', cost: 520, atk: 11, def: 3,  move: 1, req: { t: 'ranged', l: 4}, soldiers: 100,
+    terrain: { PLAINS: 1.1, FOREST: 1.2, MOUNTAIN: 1.2, DESERT: 1.0, TUNDRA: 0.9 } },
+  autogun:   { id: 'autogun',   name: '自动步枪兵', icon: '⚡', cost: 680, atk: 13, def: 5, move: 1, req: { t: 'ranged', l: 5}, soldiers: 100,
+    terrain: { PLAINS: 1.1, FOREST: 1.0, MOUNTAIN: 1.2, DESERT: 1.0, TUNDRA: 1.1 } },
+  howitzer:  { id: 'howitzer',  name: '榴弹炮',   icon: '🎇', cost: 950, atk: 14, def: 2,  move: 1, req: { t: 'artillery', l: 3}, soldiers: 100, siege: true,
+    terrain: { PLAINS: 1.2, FOREST: 0.8, MOUNTAIN: 1.0, DESERT: 1.2, TUNDRA: 0.9 } },
+  rocket:    { id: 'rocket',    name: '火箭炮',   icon: '🚀', cost: 1200, atk: 15, def: 2, move: 1, req: { t: 'artillery', l: 4}, soldiers: 100, siege: true,
+    terrain: { PLAINS: 1.2, FOREST: 0.8, MOUNTAIN: 1.0, DESERT: 1.2, TUNDRA: 0.9 } },
+  selfart:   { id: 'selfart',   name: '自走炮',   icon: '🛰️', cost: 1500, atk: 16, def: 3, move: 2, req: { t: 'artillery', l: 5}, soldiers: 100, siege: true,
+    terrain: { PLAINS: 1.2, FOREST: 0.8, MOUNTAIN: 1.1, DESERT: 1.2, TUNDRA: 1.0 } },
+  carrier:   { id: 'carrier',   name: '航空母舰', icon: '🛫', cost: 1800, atk: 12, def: 8,  move: 1, req: { t: 'navy', l: 5}, naval: true, soldiers: 100 },
+  stealth:   { id: 'stealth',   name: '隐形战机', icon: '🛸', cost: 1800, atk: 12, def: 6,  move: 3, req: { t: 'air', l: 4}, air: true, soldiers: 100,
+    terrain: { PLAINS: 1.2, FOREST: 1.0, MOUNTAIN: 1.1, DESERT: 1.2, TUNDRA: 1.1 } },
+  drone:     { id: 'drone',     name: '无人机',   icon: '🤖', cost: 2200, atk: 13, def: 4,  move: 3, req: { t: 'air', l: 5}, air: true, soldiers: 100,
+    terrain: { PLAINS: 1.1, FOREST: 1.0, MOUNTAIN: 1.2, DESERT: 1.1, TUNDRA: 1.1 } },
+  native:    { id: 'native',    name: '土著勇士', icon: '🗡️', cost: 0,   atk: 2,  def: 2,  move: 1, req: null, soldiers: 100, native: true,
+    terrain: { PLAINS: 1.0, FOREST: 1.4, MOUNTAIN: 1.2, DESERT: 1.0, TUNDRA: 1.1 } },
+};
+// 地图上正规军/土著军的统一图标（区别于各兵种明细图标）
+const SOLDIER_ICON = '🪖';   // 政权军人（士兵）
+const NATIVE_ICON  = '🗡️';   // 土著军人
+// 地形攻防乘数的中性默认（海军在海战不适用地形）
+function terrainMod(unit, terrainId) {
+  const t = unit.terrain;
+  return (t && t[terrainId]) ? t[terrainId] : 1;
+}
+
+// 抵抗度图标随程度变化（越低士气越低）
+function resistanceIcon(r) {
+  if (r >= 61) return '🛡️';
+  if (r >= 31) return '⚔️';
+  return '💀';
+}
+// 抵抗度士气乘数：抵抗 0→0.8，抵抗 100→1.2（低抵抗 → 防守变弱）
+function moraleMultiplier(r) {
+  return 0.8 + Math.max(0, Math.min(100, r || 100)) / 100 * 0.4;
+}
+
+// ============ 建筑（eco/mil 为对应科技线需求等级；gold 为每块基础产出之外的额外金币；buff 为悬停说明） ============
+const BUILDINGS = {
+  farm:       { id: 'farm',       name: '农场',     icon: '🌾', cost: 30,  gold: 8,  pop: 0.010, mil: 0, eco: 0, buff: '人口增长 +1%/回合；产出 +8 金币/回合' },
+  granary:    { id: 'granary',    name: '粮仓',     icon: '🌽', cost: 25,  gold: 0,  pop: 0.015, mil: 0, eco: 0, buff: '人口增长 +1.5%/回合（优先扩充人口）' },
+  sawmill:    { id: 'sawmill',    name: '锯木厂',   icon: '🪵', cost: 50,  gold: 8,  pop: 0.000, mil: 0, eco: 1, buff: '森林格产出 +8 金币/回合' },
+  market:     { id: 'market',     name: '市场',     icon: '🏪', cost: 80,  gold: 15, pop: 0.000, mil: 0, eco: 1, buff: '产出 +15 金币/回合' },
+  port:       { id: 'port',       name: '港口',     icon: '⚓', cost: 70,  gold: 12, pop: 0.000, mil: 0, eco: 1, naval: true, buff: '沿海格产出 +12 金币/回合；可建海军' },
+  lighthouse: { id: 'lighthouse', name: '灯塔',     icon: '🗼', cost: 60,  gold: 10, pop: 0.000, mil: 0, eco: 1, naval: true, buff: '沿海格产出 +10 金币/回合' },
+  mine:       { id: 'mine',       name: '矿山',     icon: '⛏️', cost: 80,  gold: 15, pop: 0.000, mil: 0, eco: 2, buff: '山地格产出 +15 金币/回合' },
+  workshop:   { id: 'workshop',   name: '工坊',     icon: '⚙️', cost: 70,  gold: 12, pop: 0.000, mil: 0, eco: 2, buff: '产出 +12 金币/回合；建造成本 -5%' },
+  barracks:   { id: 'barracks',   name: '兵营',     icon: '🛡️', cost: 50,  gold: 0,  pop: 0.000, mil: 1, eco: 0, recruiter: true, buff: '可在本格招募军队' },
+  arsenal:    { id: 'arsenal',    name: '兵工厂',   icon: '🔩', cost: 80,  gold: 0,  pop: 0.000, mil: 2, eco: 0, buff: '本格招募费用 -15%' },
+  fort:       { id: 'fort',       name: '要塞',     icon: '🛕', cost: 100, gold: 0,  pop: 0.000, mil: 2, eco: 0, fort: true, buff: '防守加成 +50%' },
+  bank:       { id: 'bank',       name: '银行',     icon: '🏦', cost: 120, gold: 20, pop: 0.000, mil: 0, eco: 3, buff: '产出 +20 金币/回合' },
+  university: { id: 'university', name: '大学',     icon: '🎓', cost: 120, gold: 0,  pop: 0.000, mil: 0, eco: 3, buff: '每回合自动向科技投入少量金币' },
+};
+
+// ============ 科技树（横向多条独立线，参考钢铁雄心4/坦克世界） ============
+// 每个节点可有 req 前置条件（需先解锁对应线的某级）；只有 melee 开局自带，其余需研究开启前置后解锁
+const TECH_TREE = {
+  melee: [
+    { id: 0, name: '民兵',   cost: 0 },
+    { id: 1, name: '刀剑手', cost: 80,  req: [{ t: 'melee', l: 0 }] },
+    { id: 2, name: '长枪兵', cost: 180, req: [{ t: 'melee', l: 1 }] },
+    { id: 3, name: '步兵·轻骑', cost: 320, req: [{ t: 'melee', l: 2 }] },
+    { id: 4, name: '重步兵·重骑', cost: 520, req: [{ t: 'melee', l: 3 }] },
+    { id: 5, name: '现代步兵', cost: 900, req: [{ t: 'melee', l: 4 }] },
+  ],
+  ranged: [
+    { id: 0, name: '弓箭手', cost: 120, req: [{ t: 'melee', l: 1 }] },
+    { id: 1, name: '弩手',   cost: 240, req: [{ t: 'ranged', l: 0 }] },
+    { id: 2, name: '火枪手', cost: 400, req: [{ t: 'ranged', l: 1 }, { t: 'melee', l: 2 }] },
+    { id: 3, name: '步枪兵', cost: 700, req: [{ t: 'ranged', l: 2 }] },
+    { id: 4, name: '狙击手', cost: 900, req: [{ t: 'ranged', l: 3 }] },
+    { id: 5, name: '自动步枪兵', cost: 1200, req: [{ t: 'ranged', l: 4 }] },
+  ],
+  artillery: [
+    { id: 0, name: '投石机', cost: 300, req: [{ t: 'ranged', l: 1 }] },
+    { id: 1, name: '加农炮', cost: 500, req: [{ t: 'artillery', l: 0 }, { t: 'economy', l: 1 }] },
+    { id: 2, name: '攻城炮', cost: 800, req: [{ t: 'artillery', l: 1 }] },
+    { id: 3, name: '榴弹炮', cost: 1100, req: [{ t: 'artillery', l: 2 }] },
+    { id: 4, name: '火箭炮', cost: 1500, req: [{ t: 'artillery', l: 3 }] },
+    { id: 5, name: '自走炮', cost: 1900, req: [{ t: 'artillery', l: 4 }] },
+  ],
+  navy: [
+    { id: 0, name: '桨帆船', cost: 120, req: [{ t: 'melee', l: 1 }] },
+    { id: 1, name: '轻帆船', cost: 240, req: [{ t: 'navy', l: 0 }] },
+    { id: 2, name: '盖伦帆船', cost: 420, req: [{ t: 'navy', l: 1 }] },
+    { id: 3, name: '铁甲舰', cost: 700, req: [{ t: 'navy', l: 2 }, { t: 'artillery', l: 1 }] },
+    { id: 4, name: '无畏舰', cost: 1000, req: [{ t: 'navy', l: 3 }] },
+    { id: 5, name: '航空母舰', cost: 1600, req: [{ t: 'navy', l: 4 }, { t: 'air', l: 2 }] },
+  ],
+  air: [
+    { id: 0, name: '热气球', cost: 300, req: [{ t: 'economy', l: 2 }] },
+    { id: 1, name: '侦察机', cost: 550, req: [{ t: 'air', l: 0 }] },
+    { id: 2, name: '战斗机', cost: 850, req: [{ t: 'air', l: 1 }] },
+    { id: 3, name: '战略轰炸机', cost: 1300, req: [{ t: 'air', l: 2 }] },
+    { id: 4, name: '隐形战机', cost: 1600, req: [{ t: 'air', l: 3 }] },
+    { id: 5, name: '无人机', cost: 2100, req: [{ t: 'air', l: 4 }, { t: 'artillery', l: 3 }] },
+  ],
+  economy: [
+    { id: 0, name: '农业', cost: 0 },
+    { id: 1, name: '商业', cost: 80,  req: [{ t: 'economy', l: 0 }] },
+    { id: 2, name: '矿业', cost: 200, req: [{ t: 'economy', l: 1 }] },
+    { id: 3, name: '财政改革', cost: 380, req: [{ t: 'economy', l: 2 }] },
+    { id: 4, name: '工业化', cost: 650, req: [{ t: 'economy', l: 3 }] },
+    { id: 5, name: '现代金融', cost: 1000, req: [{ t: 'economy', l: 4 }] },
+  ],
+  culture: [
+    { id: 0, name: '民歌', cost: 120, req: [{ t: 'economy', l: 1 }] },
+    { id: 1, name: '文学', cost: 300, req: [{ t: 'culture', l: 0 }] },
+    { id: 2, name: '哲学', cost: 600, req: [{ t: 'culture', l: 1 }] },
+    { id: 3, name: '文艺复兴', cost: 900, req: [{ t: 'culture', l: 2 }] },
+    { id: 4, name: '启蒙运动', cost: 1300, req: [{ t: 'culture', l: 3 }] },
+    { id: 5, name: '文化全球化', cost: 1800, req: [{ t: 'culture', l: 4 }] },
+  ],
+  education: [
+    { id: 0, name: '学堂', cost: 200, req: [{ t: 'culture', l: 1 }] },
+    { id: 1, name: '学院', cost: 450, req: [{ t: 'education', l: 0 }] },
+    { id: 2, name: '大学', cost: 800, req: [{ t: 'education', l: 1 }] },
+    { id: 3, name: '研究院', cost: 1100, req: [{ t: 'education', l: 2 }] },
+    { id: 4, name: '国家重点实验室', cost: 1500, req: [{ t: 'education', l: 3 }] },
+    { id: 5, name: '全民教育', cost: 2000, req: [{ t: 'education', l: 4 }] },
+  ],
+};
+// 各科技线的开启前提：只有 melee(近战) 与 economy(经济) 开局自带，其余需研究对应前置后才开启该线
+const TECH_OPEN = {
+  ranged:     { t: 'melee', l: 1 },
+  artillery:  { t: 'ranged', l: 1 },
+  navy:       { t: 'melee', l: 1 },
+  air:        { t: 'economy', l: 2 },
+  culture:    { t: 'economy', l: 1 },
+  education:  { t: 'culture', l: 1 },
+};
+
+// ============ 难度 ============
+const DIFFICULTIES = {
+  easy:   { id: 'easy',   name: '简单', aiIncomeMult: 0.8,  aiRecruitCostMult: 0.85, aiAggression: 0.3 },
+  normal: { id: 'normal', name: '普通', aiIncomeMult: 1.2,  aiRecruitCostMult: 0.9,  aiAggression: 0.55 },
+  hard:   { id: 'hard',   name: '困难', aiIncomeMult: 1.6,  aiRecruitCostMult: 0.8,  aiAggression: 0.8 },
+  insane: { id: 'insane', name: '炼狱', aiIncomeMult: 2.0,  aiRecruitCostMult: 0.7,  aiAggression: 1.0 },
+};
+
+// ============ 经济与战斗参数 ============
+const ECONOMY = {
+  baseTileGold: 30,        // 每块无建筑陆地每回合基础产出（地皮税制）
+  upkeepPerUnit: 4,        // 每单位（每支士兵队）每回合维护费
+  capitalGoldBonus: 20,    // 首都额外产出
+  secondaryCapitalGold: 4, // 副首都额外产出
+  cityGoldBonus: 8,        // 城市额外产出
+  cityCost: 30,            // 设立城市花费
+  colonizeCost: 25,        // 无主地殖民花费（需军队驻守）
+  popGrowthBase: 0.008,    // 每回合基础人口增长率（人口仅作展示，不直接产金）
+  cityGrowth: 0.020,       // 城市额外人口增长
+  farmGrowth: 0.010,       // 农场额外人口增长
+  tradeGold: 5,            // 贸易协定每回合加成
+  ecoLevel3Bonus: 0.10,    // 财政改革：总产出 +10%
+  ecoLevel4Bonus: 0.15,    // 工业化：总产出 +15%
+  startTreasury: 150,      // 初始国库
+  startArmy: 2,            // 初始守军数量（士兵队）
+  startTilesPerNation: 6,  // 每个国家初始领土格数
+  aiTechInvest: 20,        // AI 每回合科技投入（未分配滑条时默认）
+};
+
+const COMBAT = {
+  atkJitter: 0.25,         // 攻击随机浮动 ±25%
+  defJitter: 0.25,         // 防御随机浮动 ±25%
+  cityDefBonus: 0.35,      // 城市防守加成
+  fortDefBonus: 0.50,      // 要塞防守加成
+  siegeReduces: 0.70,      // 攻城车对城防削弱比例
+  maxLossRatio: 0.75,      // 败方最大伤亡比例
+  attackerMinLoss: 0.30,   // 进攻方最低伤亡（突出攻防：进攻损耗更大）
+  defenderWinLoss: 0.10,   // 守方获胜时的守方伤亡比例（很小）
+};
+
+// ============ 胜利 ============
+const VICTORY_DOMINANCE = 0.6;   // 领土占比胜利阈值
+const DEFAULT_TURN_CAP = 120;    // 默认回合上限（0 = 无上限）
+
+// ============ 政策（3 级程度点，每级增益更多；满级 3/3，部分有得有失） ============
+const POLICIES = {
+  conscription: { id: 'conscription', name: '征募制',    icon: '🪖', cost: 1000, max: 3, desc: '军队招募费用 -6.7% / 级（满级 -20%）' },
+  standingArmy: { id: 'standingArmy', name: '常备军',    icon: '🏛️', cost: 1500, max: 3, desc: '军队维护费 -10% / 级（满级 -30%）' },
+  warMachine:   { id: 'warMachine',   name: '军工优先',  icon: '⚙️', cost: 2000, max: 3, desc: '军队攻击 +5% / 级，维护费 +10% / 级' },
+  frontierDef:  { id: 'frontierDef',  name: '边墙防御',  icon: '🧱', cost: 1750, max: 3, desc: '地形防御加成 +8.3% / 级（满级 +25%）' },
+  tradeRoutes:  { id: 'tradeRoutes',  name: '商路开拓',  icon: '🐫', cost: 1500, max: 3, desc: '每项贸易协定 +5 金币 / 级' },
+  landReform:   { id: 'landReform',   name: '土地改革',  icon: '🌾', cost: 1250, max: 3, desc: '人口增长 +10% / 级，产出 +3.3% / 级' },
+  centralize:   { id: 'centralize',   name: '中央集权',  icon: '🏯', cost: 1750, max: 3, desc: '建筑成本 -6.7% / 级（满级 -20%）' },
+  exploration:  { id: 'exploration',  name: '远洋开拓',  icon: '🧭', cost: 1750, max: 3, desc: '战船攻击 +6.7% / 级（满级 +20%）' },
+};
+
+// ============ 成就 ============
+const ACHIEVEMENTS = {
+  firstBlood: { id: 'firstBlood', name: '首战告捷', icon: '⚔️', desc: '攻占第一个敌省' },
+  conqueror:  { id: 'conqueror',  name: '征服者',   icon: '🚩', desc: '累计攻占 30 个敌省' },
+  hegemon:    { id: 'hegemon',    name: '准霸主',   icon: '👑', desc: '领土达到全图 50%' },
+  unifier:    { id: 'unifier',    name: '统一世界', icon: '🌍', desc: '赢得一场胜利' },
+  pacifist:   { id: 'pacifist',   name: '和平发展', icon: '🕊️', desc: '从未主动宣战而赢得胜利' },
+  rich:       { id: 'rich',       name: '富可敌国', icon: '💰', desc: '国库达到 3000 金币' },
+  scholar:    { id: 'scholar',    name: '学术大师', icon: '🎓', desc: '完成全部科技研究' },
+  trader:     { id: 'trader',     name: '商路纵横', icon: '🐫', desc: '同时保持 5 个贸易协定' },
+  builder:    { id: 'builder',    name: '建设者',   icon: '🏗️', desc: '累计建造 20 个建筑' },
+  survivor:   { id: 'survivor',   name: '坚不可摧', icon: '🛡️', desc: '同时面对 3 个敌国仍存活 20 回合' },
+  million:    { id: 'million',    name: '人口大国', icon: '👥', desc: '国家人口达到 100 万' },
+  historian:  { id: 'historian',  name: '史学大家', icon: '📜', desc: '见证一次国家投降' },
+  expansion:  { id: 'expansion',  name: '扩张者',   icon: '🗺️', desc: '领土达到 50 格' },
+  golden:     { id: 'golden',     name: '黄金时代', icon: '💎', desc: '国库达到 10000 金币' },
+  warlord:    { id: 'warlord',    name: '百战之师', icon: '⚔️', desc: '累计攻占 100 个敌省' },
+  warmonger:  { id: 'warmonger',  name: '四面楚歌', icon: '🌐', desc: '同时向 5 个国家宣战' },
+  diplomat:   { id: 'diplomat',   name: '纵横捭阖', icon: '🤝', desc: '同时保持 3 个盟友' },
+  colonizer:  { id: 'colonizer',  name: '拓荒者',   icon: '🏴', desc: '累计殖民 15 块无主地' },
+  greatbuilder:{ id: 'greatbuilder', name: '世纪工程', icon: '🏗️', desc: '累计建造 50 个建筑' },
+  citylord:   { id: 'citylord',   name: '城市之主', icon: '🏰', desc: '累计设立 5 座城市' },
+};
+
+// ============ 工具函数 ============
+function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+function clampInt(v, lo, hi) { return Math.round(clamp(v, lo, hi)); }
+
+</script>
+  <script>
+// hexmap.js — 六边形几何 + 程序化随机大陆地图生成（v3 六边形版）
+'use strict';
+
+// ============ 六边形几何（pointy-top，轴向坐标） ============
+const SQRT3 = Math.sqrt(3);
+const HEX_SIZE = 18;      // 六边形外接圆半径（像素）
+const MAP_WIDTH = 90;     // 网格列数（容纳中央一块横平竖直的正方形大陆 + 四周海）
+const MAP_HEIGHT = 90;    // 网格行数
+
+const HEX_DIRECTIONS = [
+  { q: 1, r: 0 },   // 0 东
+  { q: 1, r: -1 },  // 1 东北
+  { q: 0, r: -1 },  // 2 西北
+  { q: -1, r: 0 },  // 3 西
+  { q: -1, r: 1 },  // 4 西南
+  { q: 0, r: 1 },   // 5 东南
+];
+
+// 陆块大小阈值：小于此值的孤岛当作水域丢弃（避免 1~2 格噪声）
+const MIN_LANDMASS = 10;
+// 首都只放在不小于此面积的陆块上，保证每个国家有发展空间（更小的陆块留作可殖民的野地）
+const CAPITAL_MIN_LANDMASS = 16;
+
+// 轴向坐标 -> 像素中心
+function hexToPixel(q, r, size) {
+  size = size || HEX_SIZE;
+  return { x: size * SQRT3 * (q + r / 2), y: size * 1.5 * r };
+}
+
+// 像素 -> 轴向坐标（浮点，未取整）
+function pixelToHexF(x, y, size) {
+  size = size || HEX_SIZE;
+  return { q: (SQRT3 / 3 * x - 1 / 3 * y) / size, r: (2 / 3 * y) / size };
+}
+
+// 像素 -> 取整轴向坐标
+function pixelToHex(x, y, size) {
+  const f = pixelToHexF(x, y, size);
+  return hexRound(f.q, f.r);
+}
+
+// 立方坐标取整（保证一致）
+function hexRound(qf, rf) {
+  const sf = -qf - rf;
+  let q = Math.round(qf), r = Math.round(rf), z = Math.round(sf);
+  const dq = Math.abs(q - qf), dr = Math.abs(r - rf), dz = Math.abs(z - sf);
+  if (dq > dr && dq > dz) q = -r - z;
+  else if (dr > dz) r = -q - z;
+  return { q, r };
+}
+
+// 六边形相邻
+function hexNeighbor(q, r, dir) {
+  const d = HEX_DIRECTIONS[((dir % 6) + 6) % 6];
+  return { q: q + d.q, r: r + d.r };
+}
+
+// 六边形距离（轴向）
+function hexDistance(a, b) {
+  return (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs((a.q + a.r) - (b.q + b.r))) / 2;
+}
+
+// 六边形顶点像素坐标
+function hexCorners(q, r, size) {
+  size = size || HEX_SIZE;
+  const c = hexToPixel(q, r, size);
+  const pts = [];
+  for (let i = 0; i < 6; i++) {
+    const ang = Math.PI / 6 + (Math.PI / 3) * i;
+    pts.push({ x: c.x + size * Math.cos(ang), y: c.y + size * Math.sin(ang) });
+  }
+  return pts;
+}
+
+// 由 hex 顶点构造 Canvas path
+function traceHexPath(ctx, q, r, size) {
+  const pts = hexCorners(q, r, size);
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < 6; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+}
+
+// 像素坐标下的两点距离（AI 决策用）
+function approxDistance(pa, pb) {
+  const dx = pa.center.x - pb.center.x;
+  const dy = pa.center.y - pb.center.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// 格子唯一键
+function tileKey(q, r) { return q * 10000 + r; }
+
+// 是否为沿海格子（海区 id 可能为 0，不能用 truthy 判断）
+function isCoastal(prov) {
+  return prov.sea !== null && prov.sea !== undefined;
+}
+
+// ============ 确定性伪随机 ============
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ============ 地图生成 ============
+// 返回 { width, height, seed, tiles, landCells }
+// tiles[i] = { q, r, i, terrainId, owner, city, capital, building, pop, army, sea, movesRemaining }
+function generateHexMap(width, height, seed) {
+  const rand = mulberry32(seed);
+  const idx = (q, r) => r * width + q;
+  const inBounds = (q, r) => q >= 0 && r >= 0 && q < width && r < height;
+
+  // ---- 陆块区域：全尺寸地图=整块大陆填满网格（屏幕呈正方形，四周海）；小地图(剧本)=随机大陆 ----
+  const solid = (width >= MAP_WIDTH && height >= MAP_HEIGHT);   // 全尺寸：整块大陆
+  const regions = [];
+  if (!solid) {
+    // 随机大陆（供剧本等小地图使用）
+    for (let i = 0; i < 3; i++) {
+      const r = Math.min(13, width * 0.22) + rand() * 3;
+      regions.push({ x: width / 2 + (rand() - 0.5) * width * 0.2, y: height / 2 + (rand() - 0.5) * height * 0.2, rx: r, ry: r });
+    }
+    const mid = 2 + Math.floor(rand() * 2);
+    for (let i = 0; i < mid; i++) {
+      const r = 5 + rand() * 3;
+      regions.push({ x: width / 2 + (rand() - 0.5) * width * 0.6, y: height / 2 + (rand() - 0.5) * height * 0.55, rx: r, ry: r });
+    }
+    const isles = 30 + Math.floor(rand() * 14);
+    for (let i = 0; i < isles; i++) {
+      const r = 1.3 + rand() * 2.1;
+      regions.push({ x: 3 + rand() * (width - 6), y: 3 + rand() * (height - 6), rx: r, ry: r });
+    }
+  }
+  // ---- 气候场：决定 沙漠/平原/森林 ----
+  const climateBlobs = [];
+  for (let i = 0; i < 8; i++) {
+    climateBlobs.push({
+      x: rand(), y: rand(),
+      radius: 0.15 + rand() * 0.3,
+      amp: 0.5 + rand() * 0.9,
+      sign: rand() < 0.5 ? -1 : 1,
+    });
+  }
+
+  const maxW = width * SQRT3, maxH = height * 1.5;
+  function normPos(q, r) {
+    const p = hexToPixel(q, r, 1);
+    return { x: p.x / maxW + 0.5, y: p.y / maxH + 0.5 };
+  }
+  function fieldValue(pos, list) {
+    let v = 0;
+    for (const b of list) {
+      const dx = pos.x - b.x, dy = pos.y - b.y;
+      v += b.amp * Math.exp(-(dx * dx + dy * dy) / (2 * b.radius * b.radius));
+    }
+    return v;
+  }
+
+  // ---- 逐格判定：落在任一陆块椭圆内即为陆地（并集）；越靠近区域中心越高为山地 ----
+  const tiles = new Array(width * height);
+  for (let r = 0; r < height; r++) {
+    for (let q = 0; q < width; q++) {
+      const i = idx(q, r);
+      const edge = (q <= 0 || r <= 0 || q >= width - 1 || r >= height - 1);
+      let terrainId = 'SEA', elev = -1, minDim = 0;
+      if (!edge && (solid || regions.length)) {
+        let minIn;
+        if (solid) {
+          // 正方形大陆：横平竖直、四角方正（无圆角），仅留少量海岸锯齿噪声
+          const SIDE = 88;   // 边长（像素）
+          const c0 = hexToPixel(0, 0, 1), c1 = hexToPixel(width - 1, height - 1, 1);
+          const CX = (c0.x + c1.x) / 2, CY = (c0.y + c1.y) / 2;
+          const pt = hexToPixel(q, r, 1);
+          const nx = (rand() - 0.5) * 0.8, ny = (rand() - 0.5) * 0.8;   // 边界噪声 → 海岸锯齿（整体仍方正）
+          const inX = Math.abs(pt.x - CX) <= SIDE / 2 + nx;
+          const inY = Math.abs(pt.y - CY) <= SIDE / 2 + ny;
+          if (inX && inY) {
+            // 地形高度：距中心越远越低（0=海岸，1=中心山地）
+            const maxD = Math.max(Math.abs(pt.x - CX), Math.abs(pt.y - CY));
+            const depth = Math.max(0, Math.min(1, (SIDE / 2 - maxD) / (SIDE / 2)));
+            minIn = (1 - depth) * (1 - depth);
+            minDim = 80;
+          } else {
+            minIn = 1e9;
+          }
+        } else {
+          minIn = 1e9;
+          for (const reg of regions) {
+            const noise = 1 + (rand() - 0.5) * 0.06;   // 海岸噪声 → 海岸锯齿
+            const ex = ((q - reg.x) / reg.rx) ** 2 + ((r - reg.y) / reg.ry) ** 2;
+            const dim = Math.min(reg.rx, reg.ry);
+            if (ex <= noise && ex < minIn) { minIn = ex; minDim = dim; }   // 取最深
+          }
+        }
+        if (minIn < 1e9) {
+          elev = 1 - Math.sqrt(Math.max(0, minIn));   // 0=海岸，1=中心
+          const clim = fieldValue(normPos(q, r), climateBlobs);
+          if (elev >= 0.5 && minDim >= 5) terrainId = 'MOUNTAIN';   // 小岛不全是山
+          else if (clim < 0.9) terrainId = 'DESERT';
+          else if (clim < 1.6) terrainId = 'PLAINS';
+          else terrainId = 'FOREST';
+        }
+      }
+      tiles[i] = { q, r, i, terrainId, owner: -1, city: false, capital: false, building: null, pop: 1, army: [], sea: null, movesRemaining: 0 };
+    }
+  }
+
+  // ---- 连通性：保留所有不小于 MIN_LANDMASS 的陆块（多大陆/群岛），丢弃小孤岛 ----
+  const kept = new Set();
+  {
+    const seen = new Set();
+    const allLand = [];
+    for (let r = 0; r < height; r++)
+      for (let q = 0; q < width; q++)
+        if (tiles[idx(q, r)].terrainId !== 'SEA') allLand.push(idx(q, r));
+
+    for (const start of allLand) {
+      if (seen.has(start)) continue;
+      const comp = [];
+      const stack = [start];
+      seen.add(start);
+      while (stack.length) {
+        const i = stack.pop();
+        comp.push(i);
+        const t = tiles[i];
+        for (let d = 0; d < 6; d++) {
+          const nb = hexNeighbor(t.q, t.r, d);
+          if (!inBounds(nb.q, nb.r)) continue;
+          const ni = idx(nb.q, nb.r);
+          if (tiles[ni].terrainId !== 'SEA' && !seen.has(ni)) { seen.add(ni); stack.push(ni); }
+        }
+      }
+      if (comp.length >= MIN_LANDMASS) {
+        comp.forEach(i => { kept.add(i); tiles[i].componentSize = comp.length; });
+      }
+    }
+  }
+
+  // 被丢弃的小陆块转为水域
+  const landCells = [];
+  for (let r = 0; r < height; r++) {
+    for (let q = 0; q < width; q++) {
+      const i = idx(q, r);
+      if (tiles[i].terrainId !== 'SEA') {
+        if (kept.has(i)) landCells.push(tiles[i]);
+        else tiles[i].terrainId = 'SEA';
+      }
+    }
+  }
+
+  return { width, height, seed, tiles, landCells };
+}
+
+// ============ 海区划分 ============
+// 海洋格子按连通域标海区 id，并把沿海陆地格子的 sea 设为相邻海区 id
+function assignSeaZones(map) {
+  const { width, height, tiles } = map;
+  const idx = (q, r) => r * width + q;
+  const inBounds = (q, r) => q >= 0 && r >= 0 && q < width && r < height;
+  let seaId = 0;
+
+  for (let r = 0; r < height; r++) {
+    for (let q = 0; q < width; q++) {
+      const t = tiles[idx(q, r)];
+      if (t.terrainId !== 'SEA' || t.sea !== null) continue;
+      // BFS 标记该连通海区
+      const stack = [[q, r]];
+      t.sea = seaId;
+      while (stack.length) {
+        const [cq, cr] = stack.pop();
+        for (let d = 0; d < 6; d++) {
+          const nb = hexNeighbor(cq, cr, d);
+          if (!inBounds(nb.q, nb.r)) continue;
+          const ni = idx(nb.q, nb.r);
+          if (tiles[ni].terrainId === 'SEA' && tiles[ni].sea === null) {
+            tiles[ni].sea = seaId;
+            stack.push([nb.q, nb.r]);
+          }
+        }
+      }
+      seaId++;
+    }
+  }
+
+  // 沿海陆地格子标记相邻海区（仅紧邻真正的 SEA 格子才算沿海，避免向内蔓延把整块大陆都标成沿海）
+  for (let r = 0; r < height; r++) {
+    for (let q = 0; q < width; q++) {
+      const t = tiles[idx(q, r)];
+      if (t.terrainId === 'SEA') continue;
+      for (let d = 0; d < 6; d++) {
+        const nb = hexNeighbor(q, r, d);
+        if (!inBounds(nb.q, nb.r)) continue;
+        const s = tiles[idx(nb.q, nb.r)];
+        if (s.terrainId === 'SEA') { t.sea = s.sea; break; }
+      }
+    }
+  }
+  return seaId;
+}
+
+// ============ 首都与初始领土分配 ============
+// 在足够大的陆块上均匀分布 N 个首都（最远点采样；小陆块留作可殖民野地，避免国家被卡在小岛）
+function placeCapitals(landCells, count, seed) {
+  const rand = mulberry32((seed ^ 0x9E3779B9) >>> 0);
+  const pool = landCells.filter(c => (c.componentSize || 0) >= CAPITAL_MIN_LANDMASS);
+  if (!pool.length) pool.push(landCells[0] || null);
+  const chosen = [];
+  const dist = new Float32Array(pool.length);
+
+  const first = Math.floor(rand() * pool.length);
+  chosen.push(pool[first]);
+  for (let i = 0; i < pool.length; i++) dist[i] = hexDistance(pool[i], chosen[0]);
+
+  for (let k = 1; k < count; k++) {
+    let best = -1, bestD = -1;
+    for (let i = 0; i < pool.length; i++) {
+      for (const c of chosen) {
+        const d = hexDistance(pool[i], c);
+        if (d < dist[i]) dist[i] = d;
+      }
+      if (dist[i] > bestD) { bestD = dist[i]; best = i; }
+    }
+    if (best < 0) break;
+    chosen.push(pool[best]);
+  }
+  return chosen;
+}
+
+// 把首都周边格子归给对应国家作为初始领土（由 state 调用；skipNation>=0 时跳过该国家，供"玩家自选首都"）
+function assignStartTiles(map, capitals, nationCount, skipNation) {
+  const rand = mulberry32((map.seed ^ 0x51ED270B) >>> 0);
+  const { width, height } = map;
+  const idx = (q, r) => r * width + q;
+  const inBounds = (q, r) => q >= 0 && r >= 0 && q < width && r < height;
+  const perNation = (ECONOMY.startTilesPerNation || 5);
+
+  let capIdx = 0;
+  for (let n = 0; n < nationCount; n++) {
+    if (n === skipNation) continue;
+    if (capIdx >= capitals.length) break;
+    const cap = capitals[capIdx++];
+    const startTile = map.tiles[idx(cap.q, cap.r)];
+    startTile.owner = n;
+    startTile.city = true;
+    startTile.capital = true;
+    startTile.pop = 3;
+
+    // 从已占领格子出发逐层外扩，保证初始领土严格六连通
+    const frontier = [{ q: cap.q, r: cap.r }];
+    const visited = new Set([tileKey(cap.q, cap.r)]);
+    let collected = 1;
+    while (collected < perNation && frontier.length) {
+      const cur = frontier.shift();
+      for (let d = 0; d < 6; d++) {
+        const nb = hexNeighbor(cur.q, cur.r, d);
+        const k = tileKey(nb.q, nb.r);
+        if (visited.has(k) || !inBounds(nb.q, nb.r)) continue;
+        visited.add(k);
+        const t = map.tiles[idx(nb.q, nb.r)];
+        if (t.terrainId === 'SEA' || t.owner !== -1) continue;
+        t.owner = n;
+        t.pop = 1 + Math.floor(rand() * 2);
+        collected++;
+        frontier.push(nb);
+        if (collected >= perNation) break;   // 单个格子也可能收满，须立即停止
+      }
+    }
+    // 首都初始守军（士兵队，兵力零整不一，不超过 1000）
+    for (let i = 0; i < (ECONOMY.startArmy || 2); i++) {
+      startTile.army.push({ type: 'swordsman', soldiers: 100 + Math.floor(rand() * 900) });
+    }
+  }
+}
+
+// 顶层构建：生成地图 + 划海区 + 分配国家首都与领土
+// 返回 { width, height, seed, tiles, landCells }
+function buildHexMap(seed, nationCount, width, height, skipNation) {
+  const map = generateHexMap(width || MAP_WIDTH, height || MAP_HEIGHT, seed);
+  assignSeaZones(map);
+  const capitals = placeCapitals(map.landCells, nationCount, seed);
+  assignStartTiles(map, capitals, nationCount, skipNation >= 0 ? skipNation : -1);
+  return map;
+}
+
+</script>
+  <script>
+// world.js — 国家名单（v3 六边形随机大陆版）
+'use strict';
+
+// 可玩国家（玩家选择 / AI 控制）及其颜色
+const WORLD_NATIONS = {
+  '中国': '#c0392b', '美国': '#2980b9', '俄罗斯': '#8e44ad', '巴西': '#27ae60',
+  '印度': '#e67e22', '日本': '#ecf0f1', '德国': '#34495e', '法国': '#2c6fbb',
+  '英国': '#6c5ce7', '意大利': '#00b894', '西班牙': '#f1c40f', '乌克兰': '#ffd32a',
+  '土耳其': '#d63031', '埃及': '#f39c12', '伊朗': '#2d3436', '沙特': '#10ac84',
+  '澳大利亚': '#fdcb6e', '加拿大': '#e74c3c', '墨西哥': '#1abc9c', '阿根廷': '#74b9ff',
+  '印尼': '#e17055', '巴基斯坦': '#00cec9', '尼日利亚': '#6ab04c', '韩国': '#0fbcf9',
+  '波兰': '#ff7675', '希腊': '#0984e3', '泰国': '#fab1a0', '越南': '#f8c291',
+  '南非': '#a29bfe', '哥伦比亚': '#f9ca24', '蒙古': '#7f8c8d', '菲律宾': '#f53b57',
+};
+
+// 按海区在地图上的位置命名（如 太平洋/大西洋/印度洋/北冰洋/地中海），与真实世界呼应
+function oceanName(fx, fy) {
+  const dx = fx - 0.5, dy = fy - 0.5;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (fy < 0.20) return '北冰洋';
+  if (dist < 0.24) return '地中海';
+  if (fx < 0.42) return '大西洋';
+  if (fx > 0.60) return '太平洋';
+  if (fy > 0.60) return '印度洋';
+  return '南大洋';
+}
+
+// 汇总每个海区（海洋连通域）的中心位置，并赋一个按位置命名的海名；结果存到 game.seaNames
+function computeSeaNames(game) {
+  const zones = {};
+  for (const prov of game.map.provinces) {
+    if (prov.sea === null || prov.sea === undefined) continue;
+    if (!zones[prov.sea]) zones[prov.sea] = { x: 0, y: 0, n: 0 };
+    zones[prov.sea].x += prov.center.x; zones[prov.sea].y += prov.center.y; zones[prov.sea].n++;
+  }
+  const names = {};
+  const w = SQRT3 * HEX_SIZE * game.map.width;
+  const h = 1.5 * HEX_SIZE * game.map.height;
+  for (const id in zones) {
+    const z = zones[id];
+    names[id] = oceanName(z.x / z.n / w, z.y / z.n / h);
+  }
+  game.seaNames = names;
+  return names;
+}
+
+// 各国领导人及独特加成（apply 对应 nationMod 的加成键；value 为乘数或附加值）
+const WORLD_LEADERS = {
+  '中国': { name: '秦始皇',     icon: '👑', trait: '书同文',   desc: '建造建筑费用 -20%',      apply: 'buildCost',  value: 0.80 },
+  '美国': { name: '华盛顿',     icon: '🦅', trait: '独立精神', desc: '防御加成 +25%',          apply: 'defense',    value: 1.25 },
+  '俄罗斯': { name: '彼得大帝', icon: '🐻', trait: '西化改革', desc: '军队移动力 +1',          apply: 'move',       value: 1 },
+  '巴西': { name: '佩德罗二世', icon: '🍃', trait: '繁荣',     desc: '金币收入 +15%',          apply: 'income',     value: 1.15 },
+  '印度': { name: '阿育王',     icon: '🕉️', trait: '仁政',     desc: '人口增长 +25%',          apply: 'popGrowth',  value: 1.25 },
+  '日本': { name: '织田信长',   icon: '⛩️', trait: '天下布武', desc: '军队攻击 +15%',          apply: 'attack',     value: 1.15 },
+  '德国': { name: '腓特烈大帝', icon: '🦅', trait: '军事天才', desc: '军事科技研究 +30%',      apply: 'techSpeed',  value: 1.30 },
+  '法国': { name: '拿破仑',     icon: '🗼', trait: '征服者',   desc: '占领的空地人口 +2',      apply: 'conquer',    value: 2 },
+  '英国': { name: '伊丽莎白一世', icon: '⚓', trait: '海上霸权', desc: '战船攻击 +25%',         apply: 'navyAtk',    value: 1.25 },
+  '意大利': { name: '凯撒',     icon: '🏛️', trait: '凯旋',     desc: '军队招募费用 -15%',      apply: 'recruitCost', value: 0.85 },
+  '西班牙': { name: '伊莎贝拉一世', icon: '🏴', trait: '大航海', desc: '战船攻击 +20%',        apply: 'navyAtk',    value: 1.20 },
+  '乌克兰': { name: '赫梅利尼茨基', icon: '🌻', trait: '哥萨克', desc: '骑兵攻击 +25%',        apply: 'cav',        value: 1.25 },
+  '土耳其': { name: '苏莱曼大帝', icon: '🕌', trait: '立法者',   desc: '税收 +15%',            apply: 'tax',        value: 1.15 },
+  '埃及': { name: '拉美西斯二世', icon: '🏺', trait: '不朽',     desc: '人口增长 +15%',        apply: 'popGrowth',  value: 1.15 },
+  '伊朗': { name: '居鲁士大帝', icon: '🦁', trait: '解放者',     desc: '攻占敌省使对方抵抗 -5', apply: 'resistance', value: -5 },
+  '沙特': { name: '阿卜杜勒阿齐兹', icon: '🕌', trait: '统一',   desc: '税收 +10%',            apply: 'tax',        value: 1.10 },
+  '澳大利亚': { name: '库克船长', icon: '🧭', trait: '探索',     desc: '战船攻击 +20%',        apply: 'navyAtk',    value: 1.20 },
+  '加拿大': { name: '麦肯齐',   icon: '🍁', trait: '拓荒',       desc: '人口增长 +15%',        apply: 'popGrowth',  value: 1.15 },
+  '墨西哥': { name: '莫雷洛斯', icon: '🌵', trait: '解放',       desc: '防御加成 +15%',        apply: 'defense',    value: 1.15 },
+  '阿根廷': { name: '圣马丁',   icon: '⛰️', trait: '安第斯',     desc: '防御加成 +25%',        apply: 'defense',    value: 1.25 },
+  '印尼': { name: '麻喏巴歇',   icon: '🌋', trait: '千岛',       desc: '战船攻击 +20%',        apply: 'navyAtk',    value: 1.20 },
+  '巴基斯坦': { name: '阿克巴', icon: '🕌', trait: '宽容',       desc: '外交更易被接受',        apply: 'diplomacy',  value: 2 },
+  '尼日利亚': { name: '奥孙',   icon: '🐘', trait: '部落同盟',   desc: '人口增长 +20%',        apply: 'popGrowth',  value: 1.20 },
+  '韩国': { name: '世宗大王',   icon: '📜', trait: '训民正音',   desc: '科技研究 +25%',        apply: 'techSpeed',  value: 1.25 },
+  '波兰': { name: '雅德维加',   icon: '🦢', trait: '联盟',       desc: '防御加成 +20%',        apply: 'defense',    value: 1.20 },
+  '希腊': { name: '亚历山大',   icon: '⚡', trait: '征服者',     desc: '军队攻击 +20%',        apply: 'attack',     value: 1.20 },
+  '泰国': { name: '纳黎萱',     icon: '🐘', trait: '战象',       desc: '骑兵攻击 +30%',        apply: 'cav',        value: 1.30 },
+  '越南': { name: '陈兴道',     icon: '🌾', trait: '抗元',       desc: '防御加成 +20%',        apply: 'defense',    value: 1.20 },
+  '南非': { name: '曼德拉',     icon: '🕊️', trait: '和解',       desc: '外交更易被接受',       apply: 'diplomacy',  value: 2 },
+  '哥伦比亚': { name: '玻利瓦尔', icon: '🏹', trait: '解放者',   desc: '军队攻击 +15%',        apply: 'attack',     value: 1.15 },
+  '蒙古': { name: '成吉思汗',   icon: '🏹', trait: '苍狼',       desc: '骑兵攻击 +40%',        apply: 'cav',        value: 1.40 },
+  '菲律宾': { name: '黎刹',     icon: '📖', trait: '觉醒',       desc: '科技研究 +20%',        apply: 'techSpeed',  value: 1.20 },
+};
+
+</script>
+  <script>
+// scenarios.js — 历史事件关卡（剧本）：预设国家/颜色/领导人/初始关系/固定地图
+'use strict';
+
+// nations 为自包含定义 { name, color, leader? }；null 表示自由模式用 WORLD_NATIONS
+// seed 固定 → 同一剧本永远生成同一张图；size 可覆盖地图尺寸
+// startWar/startAlly：用国家在 nations 数组中的索引；camp：轴心/同盟两组互相开战
+const SCENARIOS = {
+  free: {
+    id: 'free', name: '随机大陆（自由模式）', desc: '程序生成的苍澜大陆，32 国自由博弈。',
+    seed: null, size: null, nations: null,
+  },
+  warring: {
+    id: 'warring', name: '战国七雄', desc: '七雄并立，合纵连横，一统天下！', seed: 270001, size: { w: 30, h: 19 },
+    nations: [
+      { name: '秦', color: '#8a1c1c', leader: { name: '嬴政', icon: '👑', trait: '虎狼之师', desc: '军队攻击 +20%', apply: 'attack', value: 1.2 } },
+      { name: '楚', color: '#c96f2b', leader: { name: '楚庄王', icon: '🐦', trait: '问鼎中原', desc: '税收 +15%', apply: 'tax', value: 1.15 } },
+      { name: '齐', color: '#2b8a3e', leader: { name: '齐桓公', icon: '🏹', trait: '尊王攘夷', desc: '防御加成 +15%', apply: 'defense', value: 1.15 } },
+      { name: '燕', color: '#2b5fc9', leader: { name: '燕昭王', icon: '🛡️', trait: '千金买骨', desc: '招募费用 -15%', apply: 'recruitCost', value: 0.85 } },
+      { name: '赵', color: '#6b2bc9', leader: { name: '赵武灵王', icon: '🐎', trait: '胡服骑射', desc: '骑兵攻击 +25%', apply: 'cav', value: 1.25 } },
+      { name: '魏', color: '#c9a22b', leader: { name: '魏文侯', icon: '⚖️', trait: '变法图强', desc: '科技研究 +25%', apply: 'techSpeed', value: 1.25 } },
+      { name: '韩', color: '#2bc9b3', leader: { name: '韩昭侯', icon: '⚙️', trait: '强弓劲弩', desc: '招募费用 -20%', apply: 'recruitCost', value: 0.8 } },
+    ],
+    startWar: [],
+    startAlly: [],
+  },
+  threeKingdoms: {
+    id: 'threeKingdoms', name: '三国鼎立', desc: '魏蜀吴三分天下，逐鹿中原！', seed: 270002, size: { w: 20, h: 13 },
+    nations: [
+      { name: '魏', color: '#7a7a7a', leader: { name: '曹操', icon: '⚔️', trait: '挟天子', desc: '军队攻击 +20%', apply: 'attack', value: 1.2 } },
+      { name: '蜀', color: '#2b8a3e', leader: { name: '刘备', icon: '🕊️', trait: '仁德', desc: '人口增长 +20%', apply: 'popGrowth', value: 1.2 } },
+      { name: '吴', color: '#2b5fc9', leader: { name: '孙权', icon: '⛵', trait: '坐断东南', desc: '战船攻击 +25%', apply: 'navyAtk', value: 1.25 } },
+    ],
+    startWar: [],
+    startAlly: [],
+  },
+  ww2: {
+    id: 'ww2', name: '二战风云', desc: '同盟国 vs 轴心国，两大阵营殊死对决！', seed: 270003, size: null,
+    nations: [
+      { name: '中国', color: '#c0392b', leader: { name: '毛泽东', icon: '⭐', trait: '持久战', desc: '防御加成 +25%', apply: 'defense', value: 1.25 } },
+      { name: '美国', color: '#2980b9', leader: { name: '罗斯福', icon: '🦅', trait: '民主兵工厂', desc: '军队攻击 +15%', apply: 'attack', value: 1.15 } },
+      { name: '苏联', color: '#8e44ad', leader: { name: '斯大林', icon: '🔥', trait: '钢铁洪流', desc: '招募费用 -20%', apply: 'recruitCost', value: 0.8 } },
+      { name: '英国', color: '#6c5ce7', leader: { name: '丘吉尔', icon: '🦁', trait: '绝不投降', desc: '防御加成 +20%', apply: 'defense', value: 1.2 } },
+      { name: '法国', color: '#2c6fbb', leader: { name: '戴高乐', icon: '🗼', trait: '自由法国', desc: '抵抗度每回合 +2', apply: 'resistance', value: 2 } },
+      { name: '德国', color: '#34495e', leader: { name: '俾斯麦', icon: '🦅', trait: '铁血', desc: '军队移动力 +1', apply: 'move', value: 1 } },
+      { name: '意大利', color: '#27ae60', leader: { name: '加里波第', icon: '🐺', trait: '统一', desc: '人口增长 +15%', apply: 'popGrowth', value: 1.15 } },
+      { name: '日本', color: '#e67e22', leader: { name: '明治天皇', icon: '⛩️', trait: '明治维新', desc: '攻击 +20%', apply: 'attack', value: 1.2 } },
+    ],
+    startWar: [],
+    startAlly: [],
+    camp: { axis: [5, 6, 7], allies: [0, 1, 2, 3, 4] },   // 德意日 vs 中英美苏法
+  },
+};
+
+// 取剧本（无/非法 id 回退到自由模式）
+function getScenario(id) {
+  return (id && SCENARIOS[id]) ? SCENARIOS[id] : SCENARIOS.free;
+}
+
+</script>
+  <script>
+// nation.js — 国家：人口经济、科技树、建筑、政策、领导人加成（v3 六边形版）
+'use strict';
+
+const TECH_TRACK_NAMES = { melee: '近战', ranged: '远程', artillery: '炮兵', navy: '海军', air: '空军', economy: '经济', culture: '文化', education: '教育' };
+// 军事总等级 = 各战斗子线最高等级（供建筑等以"军事等级"统一判断）
+function nationMilitaryLevel(nation) {
+  return Math.max(nation.tech.melee || 0, nation.tech.ranged || 0, nation.tech.artillery || 0);
+}
+
+// 国家全局加成汇总（政策 + 领导人）。乘法键返回倍率；trade 返回每协定的金币加值。
+function nationMod(nation, key) {
+  if (!nation) return 1;
+  let mult = 1;
+  const P = nation.policies || {};
+  const lvl = k => (+P[k] || 0);   // 政策等级（0~3；旧档布尔 true 视为 1）
+  switch (key) {
+    case 'income':      break; // 收入倍率：主要来自领导人
+    case 'tax':         if (lvl('landReform')) mult *= (1 + lvl('landReform') * 0.0333); break;
+    case 'upkeep':      if (lvl('standingArmy')) mult *= (1 - lvl('standingArmy') * 0.10); if (lvl('warMachine')) mult *= (1 + lvl('warMachine') * 0.10); break;
+    case 'recruitCost': if (lvl('conscription')) mult *= (1 - lvl('conscription') * 0.0667); break;
+    case 'buildCost':   if (lvl('centralize')) mult *= (1 - lvl('centralize') * 0.0667); break;
+    case 'attack':      if (lvl('warMachine')) mult *= (1 + lvl('warMachine') * 0.05); break;
+    case 'navyAtk':     if (lvl('exploration')) mult *= (1 + lvl('exploration') * 0.0667); break;
+    case 'popGrowth':   if (lvl('landReform')) mult *= (1 + lvl('landReform') * 0.10); break;
+    case 'defense':     if (lvl('frontierDef')) mult *= (1 + lvl('frontierDef') * 0.0833); break;
+    case 'techSpeed':   break; // 科技投入效率：主要来自领导人
+    case 'trade': {
+      let add = 0;
+      if (lvl('tradeRoutes')) add += lvl('tradeRoutes') * 5;
+      return add;
+    }
+  }
+  const L = nation.leader;
+  if (L && L.apply === key) mult *= L.value;
+  return mult;
+}
+
+// 实施/升级一项政策（3 级程度点，每级增益更多）
+function enactPolicy(game, nation, policyId) {
+  const pol = POLICIES[policyId];
+  if (!pol) return { ok: false, msg: '未知政策' };
+  const max = pol.max || 1;
+  const lvl = (nation.policies && nation.policies[policyId]) || 0;
+  if (lvl >= max) return { ok: false, msg: '该政策已满级（' + max + '/' + max + '）' };
+  if (nation.treasury < pol.cost) return { ok: false, msg: '金币不足' };
+  nation.treasury -= pol.cost;
+  nation.policies[policyId] = lvl + 1;
+  addEvent(game, '📜 ' + nation.name + ' 升级政策「' + pol.name + '」至 Lv' + (lvl + 1) + '/' + max);
+  return { ok: true, msg: pol.name + ' 提升至 Lv' + (lvl + 1) + '/' + max };
+}
+
+// 单省每回合收入（地皮税制：每块基础产出 + 建筑加成 + 首都/副首都加成，人口不再直接产金）
+function provinceIncome(game, prov) {
+  let gold = ECONOMY.baseTileGold;
+  if (prov.building) gold += BUILDINGS[prov.building].gold;
+  if (prov.city) gold += ECONOMY.cityGoldBonus;                       // 城市额外产出
+  if (prov.capital) gold += ECONOMY.capitalGoldBonus;
+  if (prov.secondaryCapital) gold += ECONOMY.secondaryCapitalGold;   // 副首都额外产出
+  const nation = prov.owner === -1 ? null : game.nations[prov.owner];
+  if (nation && nation.tech && nation.tech.economy >= 3) gold *= (1 + ECONOMY.ecoLevel3Bonus);
+  if (nation && nation.tech && nation.tech.economy >= 4) gold *= (1 + ECONOMY.ecoLevel4Bonus);
+  return gold;
+}
+
+// 国家每回合经济
+function nationIncome(game, nation) {
+  let gold = 0, upkeep = 0, pop = 0, units = 0, soldiers = 0;
+  for (const prov of game.map.provinces) {
+    if (prov.owner !== nation.id) continue;
+    gold += provinceIncome(game, prov);
+    pop += prov.pop;
+    units += prov.army.length;
+    soldiers += nationSoldiers(prov);
+  }
+  gold += nation.trades.length * (ECONOMY.tradeGold + nationMod(nation, 'trade'));
+  let mult = 1;
+  if (!nation.isPlayer) mult = DIFFICULTIES[game.settings.difficulty].aiIncomeMult;
+  gold *= mult * nationMod(nation, 'income') * nationMod(nation, 'tax');
+  upkeep = units * ECONOMY.upkeepPerUnit * nationMod(nation, 'upkeep');
+
+  nation.goldIncome = Math.round(gold);
+  nation.upkeep = Math.round(upkeep);
+  nation.population = Math.round(pop);
+  nation.units = units;
+  nation.soldiers = soldiers;
+  nation.recruitable = Math.floor(pop * 0.15);   // 可招募人口（约人口 15%）
+  return { gold: nation.goldIncome, upkeep };
+}
+
+// 每回合结算：收入-维护 + 人口增长
+function applyEconomy(game, nation) {
+  const { gold, upkeep } = nationIncome(game, nation);
+  nation.treasury = Math.max(0, nation.treasury + gold - upkeep);
+  const pgMult = nationMod(nation, 'popGrowth');
+  for (const prov of game.map.provinces) {
+    if (prov.owner !== nation.id) continue;
+    let rate = ECONOMY.popGrowthBase * pgMult;
+    if (prov.city) rate += ECONOMY.cityGrowth;
+    if (prov.building && BUILDINGS[prov.building].pop) rate += BUILDINGS[prov.building].pop;
+    prov.pop += prov.pop * rate;
+  }
+  // 研究滑条：每回合按设定投入（钢铁雄心4式研究分配）
+  if (nation.techInvest) {
+    for (const track of Object.keys(TECH_TREE)) {
+      const amt = Math.min(nation.techInvest[track] || 0, nation.treasury);
+      if (amt > 0) investTech(game, nation, track, amt);
+    }
+  }
+  // 大学：每回合自动投入少量金币研究科技（优先经济，其次海军（若已开启），否则近战）
+  if (game.map.provinces.some(p => p.owner === nation.id && p.building === 'university')) {
+    let track = 'economy';
+    if (nation.tech.economy >= 2 && !nation.atWar.length && nation.tech.navy < 2 && !techOpenUnmet(nation, 'navy')) track = 'navy';
+    else if (nation.tech.economy >= 3) track = 'melee';
+    investTech(game, nation, track, Math.min(10, nation.treasury));
+  }
+}
+
+// 建造建筑
+function buildBuilding(game, nation, prov, buildingId) {
+  if (prov.owner !== nation.id) return { ok: false, msg: '不是你的领土' };
+  const b = BUILDINGS[buildingId];
+  if (!b) return { ok: false, msg: '未知建筑' };
+  if (b.mil > nationMilitaryLevel(nation)) return { ok: false, msg: '需军事科技（任一陆战线达 ' + b.mil + ' 级）' };
+  if (b.eco > nation.tech.economy) return { ok: false, msg: '需经济科技「' + TECH_TREE.economy[b.eco].name + '」' };
+  if (prov.building) return { ok: false, msg: '已有建筑' };
+  if (b.naval && !isCoastal(prov)) return { ok: false, msg: '港口需要沿海省份' };
+  const cost = Math.round(b.cost * nationMod(nation, 'buildCost'));
+  if (nation.treasury < cost) return { ok: false, msg: '金币不足' };
+  nation.treasury -= cost;
+  prov.building = buildingId;
+  nation.buildCount = (nation.buildCount || 0) + 1;   // 成就：累计建造
+  return { ok: true, msg: '建造完成' };
+}
+
+// 投资科技（三线之一）
+function investTech(game, nation, track, amount) {
+  const levels = TECH_TREE[track];
+  const cur = nation.tech[track];
+  const next = levels[cur + 1];
+  if (!next) return { upgraded: false, msg: '该科技线已至顶级' };
+  // 线开启前提检查（非近战/经济线需先研究其开启前置）
+  const openUnmet = techOpenUnmet(nation, track);
+  if (openUnmet) {
+    const nm = TECH_TRACK_NAMES[openUnmet.t] + '·' + (TECH_TREE[openUnmet.t] && TECH_TREE[openUnmet.t][openUnmet.l] ? TECH_TREE[openUnmet.t][openUnmet.l].name : openUnmet.l);
+    return { upgraded: false, msg: '⚠️ 需先开启「' + TECH_TRACK_NAMES[track] + '」线：研究「' + nm + '」', prereq: [openUnmet] };
+  }
+  // 节点前置条件检查：未满足则提示所需前置，并附带 prereq 供界面跳转
+  const unmet = (next.req || []).filter(r => (nation.tech[r.t] || 0) < r.l);
+  if (unmet.length) {
+    const names = unmet.map(r => TECH_TRACK_NAMES[r.t] + '·' + (TECH_TREE[r.t] && TECH_TREE[r.t][r.l] ? TECH_TREE[r.t][r.l].name : r.l)).join('、');
+    return { upgraded: false, msg: '⚠️ 前置未满足：需先研究「' + names + '」', prereq: unmet };
+  }
+  const invest = Math.min(amount, nation.treasury);
+  if (invest <= 0) return { upgraded: false, msg: '金币不足' };
+  nation.treasury -= invest;
+  nation.techProgress[track] += Math.round(invest * nationMod(nation, 'techSpeed'));
+  if (nation.techProgress[track] >= next.cost) {
+    nation.techProgress[track] -= next.cost;
+    nation.tech[track]++;
+    return { upgraded: true, msg: '解锁「' + next.name + '」（' + TECH_TRACK_NAMES[track] + '）' };
+  }
+  return { upgraded: false, msg: TECH_TRACK_NAMES[track] + '科技投入 +' + invest };
+}
+
+// 某科技线的开启前提是否未满足（返回未满足的前置或 null）
+function techOpenUnmet(nation, track) {
+  const o = TECH_OPEN[track];
+  if (!o) return null;
+  return (nation.tech[o.t] || 0) >= o.l ? null : o;
+}
+
+// 某科技线的"下一个可研究节点"前置是否已满足（含线开启前提，供 AI/界面判断）
+function techNextOpenable(nation, track) {
+  if (techOpenUnmet(nation, track)) return false;
+  const levels = TECH_TREE[track];
+  const next = levels[(nation.tech[track] || 0) + 1];
+  if (!next) return false;
+  return !(next.req || []).some(r => (nation.tech[r.t] || 0) < r.l);
+}
+
+// 国家已解锁的单位（土著军不可招募）；按各自科技子线解锁，且该线须已开启
+function unlockedUnits(nation) {
+  return Object.values(UNIT_TYPES).filter(u => {
+    if (u.native || !u.req) return false;
+    if (techOpenUnmet(nation, u.req.t)) return false;
+    return (nation.tech[u.req.t] || 0) >= u.req.l;
+  });
+}
+
+// 国家总实力
+function nationPower(game, nation) {
+  const tiles = nationTerritoryCount(game, nation);
+  return {
+    tiles,
+    units: nation.units || 0,
+    treasury: nation.treasury,
+    score: (nation.units || 0) * 2 + tiles * 3 + Math.floor(nation.treasury / 10),
+  };
+}
+
+function nationTerritoryCount(game, nation) {
+  let c = 0;
+  for (const prov of game.map.provinces) if (prov.owner === nation.id) c++;
+  return c;
+}
+
+function checkNationAlive(game, nation) {
+  if (!nation.alive) return false;
+  if (nationTerritoryCount(game, nation) <= 0) {
+    nation.alive = false;
+    nation.atWar = [];
+    return false;
+  }
+  return true;
+}
+
+function nationArmyProvinces(game, nation) {
+  const list = [];
+  for (const prov of game.map.provinces) {
+    if (prov.owner === nation.id && prov.army.length > 0) list.push(prov);
+  }
+  return list;
+}
+
+function nationCapitalProvince(game, nation) {
+  for (const prov of game.map.provinces) {
+    if (prov.owner === nation.id && prov.capital) return prov;
+  }
+  return null;
+}
+
+</script>
+  <script>
+// military.js — 单位、军队、移动（陆地邻接 + 海运）、战斗（v2 省份版）
+'use strict';
+
+// 招募单位到指定省
+function recruitUnit(game, nation, prov, unitId) {
+  const u = UNIT_TYPES[unitId];
+  if (!u) return { ok: false, msg: '未知单位' };
+  if (prov.owner !== nation.id) return { ok: false, msg: '不是你的领土' };
+  if (u.naval && !isCoastal(prov)) return { ok: false, msg: '战船需在沿海省份建造' };
+  if (u.req && (nation.tech[u.req.t] || 0) < u.req.l) {
+    const nm = (TECH_TREE[u.req.t] && TECH_TREE[u.req.t][u.req.l]) ? TECH_TREE[u.req.t][u.req.l].name : '更高级';
+    return { ok: false, msg: '需科技「' + TECH_TRACK_NAMES[u.req.t] + '·' + nm + '」' };
+  }
+  let cost = u.cost;
+  if (!nation.isPlayer) cost *= DIFFICULTIES[game.settings.difficulty].aiRecruitCostMult;
+  cost = Math.round(cost * nationMod(nation, 'recruitCost'));
+  if (prov.building === 'arsenal') cost = Math.round(cost * 0.85);   // 兵工厂打折
+  if (nation.treasury < cost) return { ok: false, msg: '金币不足' };
+  nation.treasury -= cost;
+  prov.army.push({ type: unitId, soldiers: u.soldiers });   // 招募一支士兵队
+  return { ok: true, msg: '征募 ' + u.name + '（' + u.soldiers + ' 士兵）' };
+}
+
+// 军队移动点数（取队内最慢单位）
+function armyMovePoints(prov) {
+  let mp = 99;
+  for (const u of prov.army) {
+    const m = UNIT_TYPES[u.type].move;
+    if (m < mp) mp = m;
+  }
+  return mp > 0 ? mp : 1;
+}
+
+function hasNavy(prov) {
+  return prov.army.some(u => UNIT_TYPES[u.type].naval);
+}
+
+function sameSea(a, b) {
+  return isCoastal(a) && isCoastal(b) && a.sea === b.sea;
+}
+
+// 尝试 from -> to 移动/海运/进攻。返回 { ok, msg, combat? }
+function tryAdvance(game, nation, fromProv, toProv) {
+  if (fromProv.owner !== nation.id || fromProv.army.length === 0) return { ok: false, msg: '无军队可动' };
+  const mp = fromProv.movesRemaining || 0;
+  const isLandNeighbor = fromProv.neighbors.includes(toProv.id);
+
+  // ---- 海运（非同陆邻，需同海区 + 队内有战船） ----
+  if (!isLandNeighbor) {
+    if (!sameSea(fromProv, toProv)) return { ok: false, msg: '不可到达：既不相邻也无共用海区' };
+    if (!hasNavy(fromProv)) return { ok: false, msg: '跨海需队内有战船' };
+    if (mp < 1) return { ok: false, msg: '移动力不足' };
+    if (toProv.owner !== -1 && toProv.owner !== nation.id) {
+      const defenderId = toProv.owner;
+      if (!isAtWar(game, nation.id, defenderId)) declareWar(game, nation.id, defenderId);
+      const wasCapital = toProv.capital;
+      const res = resolveCombat(game, fromProv, toProv);
+      if (!res) return { ok: false, msg: '登陆失败' };
+      fromProv.movesRemaining = 0;
+      if (res.win && wasCapital) handleCapitalFall(game, nation, toProv, defenderId);
+      if (res.win && game) { game._conqueredCount = (game._conqueredCount || 0) + 1; checkAchievements(game); }
+      return { ok: true, msg: res.msg, combat: res };
+    }
+    if (toProv.owner === -1 && toProv.army.length > 0) {
+      // 土著政权：需战斗击败
+      const res = resolveCombat(game, fromProv, toProv);
+      if (!res) return { ok: false, msg: '登陆失败' };
+      fromProv.movesRemaining = 0;
+      if (res.win && game) { game._conqueredCount = (game._conqueredCount || 0) + 1; checkAchievements(game); }
+      return { ok: true, msg: res.msg };
+    }
+    if (toProv.owner === -1) {
+      toProv.garrisonOwner = nation.id;   // 只驻军，不设政治主权（需殖民）
+    }
+    const kept = fromProv.army;
+    toProv.army = toProv.army.concat(kept);
+    fromProv.army = [];
+    fromProv.movesRemaining = 0;
+    toProv.movesRemaining = 0;
+    return { ok: true, msg: '⛵ 海运抵达 ' + toProv.name };
+  }
+
+  // ---- 陆地邻接移动 ----
+  const cost = TERRAINS[toProv.terrain].moveCost;
+  if (mp < cost) return { ok: false, msg: '移动力不足' };
+
+  // 敌占省
+  if (toProv.owner !== -1 && toProv.owner !== nation.id) {
+    const defenderId = toProv.owner;
+    if (!isAtWar(game, nation.id, defenderId)) declareWar(game, nation.id, defenderId);
+    if (toProv.army.length === 0) {
+      const wasCapital = toProv.capital;
+      toProv.army = fromProv.army;
+      fromProv.army = [];
+      toProv.owner = nation.id;
+      fromProv.movesRemaining = 0;
+      toProv.movesRemaining = 0;
+      addEvent(game, '🚩 ' + game.nations[nation.id].name + ' 兵不血刃占领敌省');
+      if (wasCapital) handleCapitalFall(game, nation, toProv, defenderId);
+      if (game) { game._conqueredCount = (game._conqueredCount || 0) + 1; checkAchievements(game); }
+      return { ok: true, msg: '兵不血刃，占领成功' };
+    }
+    const wasCapital = toProv.capital;
+    const res = resolveCombat(game, fromProv, toProv);
+    if (!res) return { ok: false, msg: '进攻失败' };
+    fromProv.movesRemaining = 0;
+    if (res.win && wasCapital) handleCapitalFall(game, nation, toProv, defenderId);
+    if (res.win && game) { game._conqueredCount = (game._conqueredCount || 0) + 1; checkAchievements(game); }
+    return { ok: true, msg: res.msg, combat: res };
+  }
+
+  // 空地（无政权或土著） / 友方省 → 移动
+  if (toProv.owner === -1 && toProv.army.length > 0) {
+    // 土著政权：需战斗击败，打退后仍为无主地（可殖民）
+    const res = resolveCombat(game, fromProv, toProv);
+    if (!res) return { ok: false, msg: '进攻失败' };
+    fromProv.movesRemaining = 0;
+    if (res.win && game) { game._conqueredCount = (game._conqueredCount || 0) + 1; checkAchievements(game); }
+    return { ok: true, msg: res.msg };
+  }
+  if (toProv.owner === -1) {
+    toProv.garrisonOwner = nation.id;   // 只驻军，不设政治主权（需殖民）
+  }
+  const kept = fromProv.army;
+  toProv.army = toProv.army.concat(kept);
+  fromProv.army = [];
+  fromProv.movesRemaining = 0;
+  toProv.movesRemaining = mp - cost;
+  return { ok: true, msg: '移动完成' };
+}
+
+// 一省军队的总士兵数 / 政权军人 / 土著军人
+function totalSoldiers(prov) { let n = 0; for (const u of prov.army) n += u.soldiers || 0; return n; }
+function nationSoldiers(prov) { let n = 0; for (const u of prov.army) if (!(UNIT_TYPES[u.type] && UNIT_TYPES[u.type].native)) n += u.soldiers || 0; return n; }
+function nativeSoldiers(prov) { let n = 0; for (const u of prov.army) if (UNIT_TYPES[u.type] && UNIT_TYPES[u.type].native) n += u.soldiers || 0; return n; }
+
+// 战斗推演（士兵数计战力，地形按兵种增益/减益）
+function resolveCombat(game, fromProv, toProv) {
+  const atkUnits = fromProv.army, defUnits = toProv.army;
+  if (!defUnits.length) return null;
+
+  const atkNation = game.nations[fromProv.owner];
+  const defNation = game.nations[toProv.owner];
+  const terrainId = toProv.terrain;   // 战场地形 = 防守方所在格
+
+  let atk = 0;
+  for (const u of atkUnits) {
+    const ut = UNIT_TYPES[u.type];
+    let a = ut.atk * (u.soldiers / ut.soldiers) * terrainMod(ut, terrainId);
+    if (ut.naval) a *= nationMod(atkNation, 'navyAtk');
+    else if (ut.id === 'cavalry' || ut.id === 'heavycav') a *= nationMod(atkNation, 'cav');
+    atk += a;
+  }
+  atk *= nationMod(atkNation, 'attack');
+  let def = 0;
+  for (const u of defUnits) {
+    const ut = UNIT_TYPES[u.type];
+    def += ut.def * (u.soldiers / ut.soldiers) * terrainMod(ut, terrainId);
+  }
+
+  const terrain = TERRAINS[terrainId];
+  let defMult = 1 + terrain.defBonus;
+  defMult *= nationMod(defNation, 'defense');
+  defMult *= moraleMultiplier(defNation ? defNation.resistance : 100);   // 抵抗度 → 士气 → 防守
+  const hasSiege = atkUnits.some(u => UNIT_TYPES[u.type].siege);
+  if (toProv.city) defMult += hasSiege ? COMBAT.cityDefBonus * COMBAT.siegeReduces : COMBAT.cityDefBonus;
+  if (toProv.building === 'fort') defMult += COMBAT.fortDefBonus;
+
+  const rollA = atk * (1 - COMBAT.atkJitter + Math.random() * 2 * COMBAT.atkJitter);
+  const rollD = def * defMult * (1 - COMBAT.defJitter + Math.random() * 2 * COMBAT.defJitter);
+
+  if (rollA > rollD) {
+    // 守方按战损削减；进攻方即使获胜也有可观损耗 → 突出防守优势
+    const lossRatio = clamp((rollA - rollD) / rollA, COMBAT.attackerMinLoss * 0.6, COMBAT.maxLossRatio);
+    const defLoss = applyLosses(toProv, lossRatio);
+    const myLoss = COMBAT.attackerMinLoss + Math.random() * 0.12;
+    const atkLoss = applyLosses(fromProv, myLoss);
+
+    const city = toProv.city, building = toProv.building;
+    toProv.army = fromProv.army;
+    fromProv.army = [];
+    toProv.owner = defNation ? atkNation.id : -1;        // 土著(owner -1)击败后仍为无主地，需殖民
+    toProv.garrisonOwner = defNation ? null : atkNation.id;
+    toProv.city = city;
+    toProv.capital = false;
+    toProv.building = building;
+    toProv.movesRemaining = 0;
+    addEvent(game, '⚔️ ' + atkNation.name + ' 攻占了 ' + (defNation ? defNation.name + ' 的领地' : '土著之地'));
+    return { win: true, msg: '攻占 ' + toProv.name + '！守方伤亡 ' + defLoss + '，我方伤亡 ' + atkLoss };
+  } else {
+    const lossRatio = clamp((rollD - rollA) / rollD + 0.35, 0.5, 0.95);
+    const atkLoss = applyLosses(fromProv, lossRatio);
+    const dLoss = applyLosses(toProv, COMBAT.defenderWinLoss + Math.random() * 0.08);
+    return { win: false, msg: '进攻被击退，我方伤亡 ' + atkLoss + '，守方伤亡 ' + dLoss };
+  }
+}
+
+// 按比例削减士兵数，返回伤亡士兵数
+function applyLosses(prov, ratio) {
+  if (!prov.army.length) return 0;
+  let lost = 0;
+  for (const u of prov.army) {
+    const before = u.soldiers || 0;
+    u.soldiers = Math.max(0, Math.floor(before * (1 - ratio)));
+    lost += before - u.soldiers;
+  }
+  prov.army = prov.army.filter(u => u.soldiers > 0);
+  return lost;
+}
+
+// 省份实际归属者（政治主权或驻军者；无主且无驻军则为 -1）
+function provOwnerId(prov) {
+  if (prov.owner !== -1) return prov.owner;
+  return (prov.garrisonOwner !== null && prov.garrisonOwner !== undefined) ? prov.garrisonOwner : -1;
+}
+
+// 军队拆分：把 from 的 count 名士兵派往相邻格 to（己方或无主驻军格）
+function splitArmy(game, nation, fromProv, toProv, count) {
+  if (provOwnerId(fromProv) !== nation.id) return { ok: false, msg: '不是你的军队' };
+  const avail = totalSoldiers(fromProv);
+  if (avail <= 0) return { ok: false, msg: '无军队可派' };
+  if (!fromProv.neighbors.includes(toProv.id)) return { ok: false, msg: '只能派往相邻省份' };
+  if (fromProv.movesRemaining < 1) return { ok: false, msg: '移动力不足' };
+  const c = Math.floor(count);
+  if (!(c >= 1) || c > avail) return { ok: false, msg: '派遣数量无效（1~' + avail + '）' };
+  const toOwner = provOwnerId(toProv);
+  if (toOwner !== nation.id && toProv.army.length > 0) return { ok: false, msg: '目标有敌军，需进攻' };
+  // 从 from 末尾士兵队开始剥离 c 名
+  let remaining = c;
+  const moved = [];
+  while (remaining > 0 && fromProv.army.length) {
+    const last = fromProv.army[fromProv.army.length - 1];
+    const take = Math.min(remaining, last.soldiers);
+    if (take >= last.soldiers) {
+      moved.push({ type: last.type, soldiers: last.soldiers });
+      fromProv.army.pop();
+    } else {
+      last.soldiers -= take;
+      moved.push({ type: last.type, soldiers: take });
+    }
+    remaining -= take;
+  }
+  if (moved.length) {
+    for (const m of moved) toProv.army.push(m);
+    if (toProv.owner === -1) toProv.garrisonOwner = nation.id;   // 派往无主地 → 驻军，待殖民
+    fromProv.movesRemaining = 0;
+    toProv.movesRemaining = Math.max(0, armyMovePoints(toProv) - TERRAINS[toProv.terrain].moveCost);
+    return { ok: true, msg: '派遣 ' + c + ' 名士兵' };
+  }
+  return { ok: false, msg: '派遣失败' };
+}
+
+// 每回合重置移动点（领导人的"移动力 +1"生效；驻军格按其驻军归属者结算）
+function resetArmyMoves(game) {
+  for (const prov of game.map.provinces) {
+    if (!prov.army.length) { prov.movesRemaining = 0; continue; }
+    const ownerId = provOwnerId(prov);
+    if (ownerId === -1) { prov.movesRemaining = 0; continue; }
+    let mp = armyMovePoints(prov);
+    const nation = game.nations[ownerId];
+    if (nation && nation.leader && nation.leader.apply === 'move') mp += 1;
+    prov.movesRemaining = mp;
+  }
+}
+
+// 按兵种汇总士兵数（仅政权军人，不含土著军）
+function stackSummary(prov) {
+  const summary = {};
+  for (const u of prov.army) {
+    if (UNIT_TYPES[u.type] && UNIT_TYPES[u.type].native) continue;
+    summary[u.type] = (summary[u.type] || 0) + (u.soldiers || 0);
+  }
+  return summary;
+}
+
+// 土著军士兵数
+function nativeCount(prov) {
+  let n = 0;
+  for (const u of prov.army) if (UNIT_TYPES[u.type] && UNIT_TYPES[u.type].native) n += u.soldiers || 0;
+  return n;
+}
+
+</script>
+  <script>
+// diplomacy.js — 外交关系与动作
+'use strict';
+
+function getNationById(game, id) { return game.nations[id]; }
+
+// 外交天才型领导人的接受加成
+function dipAcceptBonus(nation) {
+  return (nation && nation.leader && nation.leader.apply === 'diplomacy') ? 0.2 : 0;
+}
+
+// 国际信誉对外交接受度的加成：高信誉更被信任
+function credDiploBonus(nation) {
+  const c = (nation && nation.credibility !== undefined) ? nation.credibility : 50;
+  return (c - 50) * 0.004;
+}
+
+function relationBetween(game, aId, bId) {
+  const a = game.nations[aId];
+  if (!a || !a.relations[bId] && a.relations[bId] !== 0) return 0;
+  return a.relations[bId] || 0;
+}
+
+function isAtWar(game, aId, bId) {
+  const a = game.nations[aId];
+  return a && a.atWar.includes(bId);
+}
+
+function isAllied(game, aId, bId) {
+  const a = game.nations[aId];
+  return a && a.allies.includes(bId);
+}
+
+function hasTrade(game, aId, bId) {
+  const a = game.nations[aId];
+  return a && a.trades.includes(bId);
+}
+
+function adjustRelation(game, aId, bId, delta) {
+  const a = game.nations[aId], b = game.nations[bId];
+  if (!a || !b) return;
+  a.relations[bId] = clamp((a.relations[bId] || 0) + delta, -100, 100);
+  b.relations[aId] = clamp((b.relations[aId] || 0) + delta, -100, 100);
+}
+
+// 双方军事强度对比，用于 AI 判断
+function powerRatio(game, aId, bId) {
+  const a = nationPower(game, game.nations[aId]);
+  const b = nationPower(game, game.nations[bId]);
+  const sa = a.score + 1, sb = b.score + 1;
+  return sa / (sa + sb); // a 相对强度 0..1
+}
+
+// ---------- 外交动作 ----------
+
+// 宣战（单边即生效）
+function declareWar(game, aId, bId) {
+  const a = game.nations[aId], b = game.nations[bId];
+  if (!a.alive || !b.alive) return { ok: false, msg: '对方已覆灭' };
+  if (isAtWar(game, aId, bId)) return { ok: false, msg: '已处于战争状态' };
+  const wasAlly = isAllied(game, aId, bId);
+  const wasTrade = hasTrade(game, aId, bId);
+  a.atWar.push(bId);
+  b.atWar.push(aId);
+  if (a.isPlayer && game) game._playerDeclared = true;   // 成就：玩家主动宣战过
+  if (wasAlly) {
+    a.allies = a.allies.filter(x => x !== bId);
+    b.allies = b.allies.filter(x => x !== aId);
+  }
+  if (wasTrade) {
+    a.trades = a.trades.filter(x => x !== bId);
+    b.trades = b.trades.filter(x => x !== aId);
+  }
+  adjustRelation(game, aId, bId, -50);
+  // 国际信誉：背盟/毁约大幅失信，无故宣战也损信誉
+  let credLoss = 5;
+  if (wasAlly) credLoss = 30;
+  else if (wasTrade) credLoss = 15;
+  a.credibility = clamp((a.credibility === undefined ? 50 : a.credibility) - credLoss, 0, 100);
+  addEvent(game, '⚔️ ' + a.name + ' 向 ' + b.name + ' 宣战！' + (credLoss > 5 ? '（背信弃义，信誉 -' + credLoss + '）' : ''));
+  return { ok: true, msg: '已宣战' };
+}
+
+// 议和（需对方同意，基于战争态势与关系）
+function proposePeace(game, aId, bId) {
+  const a = game.nations[aId], b = game.nations[bId];
+  if (!isAtWar(game, aId, bId)) return { ok: false, msg: '并未处于战争状态' };
+
+  // AI 是否同意
+  const rel = (a.relations[bId] || 0);
+  const ratio = powerRatio(game, aId, bId);
+  let chance = 0.25 + ratio * 0.4 + Math.max(0, rel) * 0.004 + 0.1;
+  chance = clamp(chance, 0.15, 0.9);
+  const accepted = b.isPlayer || Math.random() < (chance + dipAcceptBonus(a) + credDiploBonus(a));
+
+  if (accepted) {
+    a.atWar = a.atWar.filter(x => x !== bId);
+    b.atWar = b.atWar.filter(x => x !== aId);
+    adjustRelation(game, aId, bId, 20);
+    addEvent(game, '🕊️ ' + a.name + ' 与 ' + b.name + ' 达成和平');
+    return { ok: true, msg: '和平达成' };
+  }
+  adjustRelation(game, aId, bId, -2);
+  const reason = rel < -20 ? '对方在战场上占据优势，无意议和' : '对我的和平诚意存疑';
+  return { ok: false, msg: b.name + ' 拒绝了议和：' + reason };
+}
+
+// 结盟
+function proposeAlliance(game, aId, bId) {
+  const a = game.nations[aId], b = game.nations[bId];
+  if (isAllied(game, aId, bId)) return { ok: false, msg: '已是盟友' };
+  if (isAtWar(game, aId, bId)) return { ok: false, msg: '战争状态下无法结盟' };
+  const rel = (b.relations[aId] || 0);
+  const accepted = b.isPlayer ? true : rel >= 50 && Math.random() < (0.7 + dipAcceptBonus(a) + credDiploBonus(a));
+  if (!accepted) {
+    const reason = rel < 50
+      ? '友好度不足（当前 ' + rel + '，需 ≥50）'
+      : '对我方仍缺乏信任，婉拒结盟';
+    return { ok: false, msg: b.name + ' 婉拒了结盟：' + reason };
+  }
+  a.allies.push(bId);
+  b.allies.push(aId);
+  adjustRelation(game, aId, bId, 15);
+  addEvent(game, '🤝 ' + a.name + ' 与 ' + b.name + ' 结成同盟');
+  return { ok: true, msg: '结盟成功' };
+}
+
+// 贸易协定
+function proposeTrade(game, aId, bId) {
+  const a = game.nations[aId], b = game.nations[bId];
+  if (hasTrade(game, aId, bId)) return { ok: false, msg: '已有贸易协定' };
+  if (isAtWar(game, aId, bId)) return { ok: false, msg: '战争状态下无法通商' };
+  const rel = (b.relations[aId] || 0);
+  const accepted = b.isPlayer ? true : rel >= 20 && Math.random() < (0.8 + dipAcceptBonus(a) + credDiploBonus(a));
+  if (!accepted) {
+    const reason = rel < 20
+      ? '友好度不足（当前 ' + rel + '，需 ≥20）'
+      : '对我方仍有戒心，暂时拒绝通商';
+    return { ok: false, msg: b.name + ' 婉拒了通商：' + reason };
+  }
+  a.trades.push(bId);
+  b.trades.push(aId);
+  adjustRelation(game, aId, bId, 6);
+  addEvent(game, '💰 ' + a.name + ' 与 ' + b.name + ' 建立贸易协定');
+  return { ok: true, msg: '贸易协定生效' };
+}
+
+// 赠金
+function offerGift(game, aId, bId, amount) {
+  const a = game.nations[aId], b = game.nations[bId];
+  amount = Math.min(Math.max(0, Math.floor(amount)), a.treasury);
+  if (amount < 10) return { ok: false, msg: '赠金至少 10 金币' };
+  a.treasury -= amount;
+  b.treasury += amount;
+  adjustRelation(game, aId, bId, Math.floor(amount / 10));
+  addEvent(game, '🎁 ' + a.name + ' 向 ' + b.name + ' 赠送 ' + amount + ' 金币');
+  return { ok: true, msg: '赠金已送达' };
+}
+
+</script>
+  <script>
+// ai.js — AI 决策（v2 省份版）
+'use strict';
+
+// 两国是否有陆地相邻（含海运可达不考虑）
+function areAdjacent(game, aId, bId) {
+  for (const p of game.map.provinces) {
+    if (p.owner !== aId) continue;
+    for (const nid of p.neighbors) {
+      if (game.map.provinces[nid].owner === bId) return true;
+    }
+  }
+  return false;
+}
+
+function enemyProvincesOf(game, nation) {
+  const list = [];
+  for (const eid of nation.atWar) {
+    const e = game.nations[eid];
+    if (!e || !e.alive) continue;
+    for (const p of game.map.provinces) if (p.owner === eid) list.push(p);
+  }
+  return list;
+}
+
+// 朝目标走一步（穿过己方/空地/交战方领土）
+function stepToward(game, prov, target, nation) {
+  let best = null, bestD = 1e9;
+  for (const nid of prov.neighbors) {
+    const p = game.map.provinces[nid];
+    if (p.owner !== -1 && p.owner !== nation.id && !isAtWar(game, nation.id, p.owner)) continue;
+    const d = approxDistance(p, target);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return best;
+}
+
+// 扩张目标：在己方省份内 BFS，找“紧邻空地”的边界省
+function findExpansionTarget(game, nation, prov) {
+  const queue = [prov];
+  const visited = new Set([prov.id]);
+  while (queue.length) {
+    const cur = queue.shift();
+    for (const nid of cur.neighbors) {
+      const p = game.map.provinces[nid];
+      if (p.owner === -1) return { from: cur, to: p };
+    }
+    for (const nid of cur.neighbors) {
+      const p = game.map.provinces[nid];
+      if (p.owner === nation.id && !visited.has(p.id)) { visited.add(p.id); queue.push(p); }
+    }
+  }
+  return null;
+}
+
+// 殖民己方驻军的无主地（军队驻守 + 花费金币）
+function aiColonize(game, nation) {
+  let n = 0;
+  for (const prov of game.map.provinces) {
+    if (n >= 3) break;   // 每回合最多殖民 3 块
+    if (prov.owner !== -1 || prov.garrisonOwner !== nation.id || !prov.army.length) continue;
+    if (nation.treasury < ECONOMY.colonizeCost) continue;
+    colonizeProvince(game, nation, prov);
+    n++;
+  }
+}
+
+function aiRecruit(game, nation) {
+  const diff = DIFFICULTIES[game.settings.difficulty];
+  const power = nationPower(game, nation);
+  const want = Math.max(2, Math.floor(nationTerritoryCount(game, nation) / 2));
+  if (power.units >= want + 2 || nation.treasury < 25) return;
+
+  let bestProv = null;
+  for (const p of game.map.provinces) {
+    if (p.owner !== nation.id) continue;
+    if (p.building === 'barracks' || p.capital) { bestProv = p; break; }
+  }
+  if (!bestProv) {
+    for (const p of game.map.provinces) if (p.owner === nation.id) { bestProv = p; break; }
+  }
+  if (!bestProv) return;
+
+  const avail = unlockedUnits(nation).filter(u => nation.treasury >= Math.round(u.cost * diff.aiRecruitCostMult));
+  let pool = avail;
+  if (!nation.atWar.length) pool = avail.filter(u => !u.siege);
+  if (!pool.length) pool = avail;
+  if (!pool.length) return;
+  const best = pool.reduce((a, b) => a.atk * a.def >= b.atk * b.def ? a : b);
+  recruitUnit(game, nation, bestProv, best.id);
+}
+
+function aiBuild(game, nation) {
+  const appetite = DIFFICULTIES[game.settings.difficulty].aiAggression;
+  if (Math.random() > appetite * 0.9) return;
+  let built = 0;
+  for (const p of game.map.provinces) {
+    if (p.owner !== nation.id || built >= 2) continue;
+    if (p.building) continue;
+    // 首都优先要塞（战时）或兵营
+    if (p.capital && nation.atWar.length && nation.treasury >= BUILDINGS.fort.cost) {
+      buildBuilding(game, nation, p, 'fort'); built++; continue;
+    }
+    if (p.capital && nation.treasury >= BUILDINGS.barracks.cost) {
+      buildBuilding(game, nation, p, 'barracks'); built++; continue;
+    }
+    // 沿海建港口（解锁海运）
+    if (isCoastal(p) && nation.treasury >= BUILDINGS.port.cost) {
+      buildBuilding(game, nation, p, 'port'); built++; continue;
+    }
+    // 平原/沙漠造矿山
+    if ((p.terrain === 'PLAINS' || p.terrain === 'DESERT') && Math.random() < 0.6 && nation.treasury >= BUILDINGS.mine.cost) {
+      buildBuilding(game, nation, p, 'mine'); built++; continue;
+    }
+  }
+}
+
+function aiTech(game, nation) {
+  const invest = Math.min(ECONOMY.aiTechInvest, Math.max(0, nation.treasury - 40));
+  if (invest <= 0) return;
+  // 只在"下一个节点前置已满足"的线里选；有海战需求优先海军，和平优先经济，否则随机军事线
+  const open = Object.keys(TECH_TREE).filter(t => techNextOpenable(nation, t));
+  if (!open.length) return;
+  let track = open[Math.floor(Math.random() * open.length)];
+  if (nation.atWar.length && enemyOnlyBySea(game, nation) && open.includes('navy')) track = 'navy';
+  else if (!nation.atWar.length && nation.tech.economy < 2 && open.includes('economy')) track = 'economy';
+  investTech(game, nation, track, invest);
+}
+
+function enemyOnlyBySea(game, nation) {
+  for (const eid of nation.atWar) {
+    if (game.nations[eid] && game.nations[eid].alive && !areAdjacent(game, nation.id, eid)) return true;
+  }
+  return false;
+}
+
+// 海军建设：与敌国无陆路且敌国临海 → 造战船 / 研究航海
+function aiNavalPlan(game, nation) {
+  if (nation.tech.navy < 1) {
+    investTech(game, nation, 'navy', ECONOMY.aiTechInvest);
+  }
+  const needsNavy = enemyOnlyBySea(game, nation);
+  if (!needsNavy) return;
+  const coastal = game.map.provinces.find(p => p.owner === nation.id && isCoastal(p));
+  if (!coastal) return;
+  const hasAnyNavy = game.map.provinces.some(p => p.owner === nation.id && hasNavy(p));
+  if (!hasAnyNavy) recruitUnit(game, nation, coastal, 'galley');
+}
+
+function aiStrategy(game, nation) {
+  const diff = DIFFICULTIES[game.settings.difficulty];
+  if (nation.atWar.length) return;
+
+  // 实力占优且相邻、关系平淡 → 宣战
+  if (Math.random() < diff.aiAggression * 0.5) {
+    let target = null, best = 0;
+    for (const other of game.nations) {
+      if (other.id === nation.id || !other.alive) continue;
+      if (isAllied(game, nation.id, other.id) || hasTrade(game, nation.id, other.id)) continue;
+      if (isAtWar(game, nation.id, other.id)) continue;
+      if ((nation.relations[other.id] || 0) > 10) continue;
+      if (!areAdjacent(game, nation.id, other.id)) continue;
+      const cred = other.credibility || 50;
+      if (cred > 70 && Math.random() < 0.7) continue;          // 忌惮高信誉国
+      const ratio = powerRatio(game, nation.id, other.id);
+      const threshold = cred < 25 ? 0.42 : 0.58;               // 低信誉国更易被入侵
+      if (ratio > threshold && ratio > best) { best = ratio; target = other.id; }
+    }
+    if (target !== null) declareWar(game, nation.id, target);
+  }
+  // 弱而关系好 → 结盟 / 通商
+  else if (Math.random() < 0.25) {
+    for (const other of game.nations) {
+      if (other.id === nation.id || !other.alive) continue;
+      if (isAllied(game, nation.id, other.id) || hasTrade(game, nation.id, other.id)) continue;
+      if (isAtWar(game, nation.id, other.id)) continue;
+      const rel = nation.relations[other.id] || 0;
+      const ratio = powerRatio(game, nation.id, other.id);
+      if (ratio < 0.45 && rel > 30) { proposeAlliance(game, nation.id, other.id); break; }
+      if (rel > 15) { proposeTrade(game, nation.id, other.id); break; }
+    }
+  }
+}
+
+// 大国博弈：玩家崛起时 AI 联手/宣战制造压力
+function aiPolitic(game, nation) {
+  const diff = DIFFICULTIES[game.settings.difficulty];
+  const player = game.nations[game.playerId];
+  if (!player || !player.alive || player.id === nation.id) return;
+  const pTiles = nationTerritoryCount(game, player);
+  const total = game.map.provinces.length;
+  if (pTiles <= total * 0.22) return;   // 玩家尚未构成威胁
+  const ratio = powerRatio(game, nation.id, player.id);
+
+  // 实力足够 → 宣战玩家
+  if (ratio > 0.5 && Math.random() < diff.aiAggression * 0.45) {
+    if (!isAtWar(game, nation.id, player.id) && !isAllied(game, nation.id, player.id) &&
+        !hasTrade(game, nation.id, player.id) && (nation.relations[player.id] || 0) < 15) {
+      declareWar(game, nation.id, player.id);
+      adjustRelation(game, nation.id, player.id, -15);
+      return;
+    }
+  }
+  // 弱国 → 与已在交战的其它国结盟对抗玩家
+  if (ratio < 0.45 && Math.random() < diff.aiAggression * 0.35) {
+    for (const other of game.nations) {
+      if (other.id === nation.id || other.id === player.id || !other.alive) continue;
+      if (!isAtWar(game, other.id, player.id)) continue;
+      if (!isAllied(game, nation.id, other.id) && !isAtWar(game, nation.id, other.id)) {
+        proposeAlliance(game, nation.id, other.id);
+        break;
+      }
+    }
+  }
+}
+
+// 每回合 AI 主入口
+function runAI(game, nation) {
+  if (!checkNationAlive(game, nation)) return;
+  aiStrategy(game, nation);
+  aiPolitic(game, nation);
+
+  const enemies = enemyProvincesOf(game, nation);
+  const armies = nationArmyProvinces(game, nation);
+
+  for (const prov of armies) {
+    if (!prov.army.length || prov.movesRemaining < 1) continue;
+
+    if (enemies.length) {
+      let target = null, bestD = 1e9;
+      for (const e of enemies) {
+        const d = approxDistance(prov, e);
+        if (d < bestD) { bestD = d; target = e; }
+      }
+      if (target) {
+        if (prov.neighbors.includes(target.id)) {
+          tryAdvance(game, nation, prov, target);
+        } else if (sameSea(prov, target) && hasNavy(prov)) {
+          tryAdvance(game, nation, prov, target);
+        } else {
+          const step = stepToward(game, prov, target, nation);
+          if (step && (step.owner === nation.id || step.owner === -1)) tryAdvance(game, nation, prov, step);
+        }
+        continue;
+      }
+    }
+
+    // 和平扩张
+    const exp = findExpansionTarget(game, nation, prov);
+    if (exp) {
+      if (exp.from.id === prov.id) tryAdvance(game, nation, prov, exp.to);
+      else {
+        const step = stepToward(game, prov, exp.from, nation);
+        if (step && step.owner === nation.id) tryAdvance(game, nation, prov, step);
+      }
+    }
+  }
+
+  aiColonize(game, nation);   // 先殖民已驻军的无主地
+  aiRecruit(game, nation);
+  aiNavalPlan(game, nation);
+  if (Math.random() < 0.8) aiBuild(game, nation);
+  aiTech(game, nation);
+}
+
+</script>
+  <script>
+// state.js — 全局游戏状态、回合流程、胜利判定、存档（v3 六边形版）
+'use strict';
+
+let GAME = null;           // 当前游戏对象
+const SAVE_KEY = 'empire_front_save_';
+
+// 由六边形地图构建省份数组（含 id/center/neighbors/命中索引）
+function buildProvinces(hexMap) {
+  const provinces = [];
+  const byKey = {};
+  for (const tile of hexMap.tiles) {
+    if (tile.terrainId === 'SEA') continue;
+    const prov = {
+      id: provinces.length,
+      name: '格' + tile.q + '-' + tile.r,
+      terrain: tile.terrainId,
+      sea: tile.sea !== null ? tile.sea : null,
+      coords: hexCorners(tile.q, tile.r),   // 像素顶点
+      center: hexToPixel(tile.q, tile.r),   // 像素中心
+      pop: tile.pop,
+      owner: tile.owner,
+      city: tile.city,
+      capital: tile.capital,
+      secondaryCapital: false,
+      building: tile.building,
+      army: tile.army,
+      garrisonOwner: null,   // 无主地驻军归属者（驻军未殖民时记录谁在占领，null=无驻军）
+      movesRemaining: 0,
+      q: tile.q,
+      r: tile.r,
+      neighbors: [],
+    };
+    tile.provId = prov.id;
+    provinces.push(prov);
+    byKey[tileKey(tile.q, tile.r)] = prov.id;
+  }
+  // 陆地六邻接
+  for (const tile of hexMap.tiles) {
+    if (tile.terrainId === 'SEA' || tile.provId === undefined) continue;
+    const prov = provinces[tile.provId];
+    for (let d = 0; d < 6; d++) {
+      const nb = hexNeighbor(tile.q, tile.r, d);
+      const nid = byKey[tileKey(nb.q, nb.r)];
+      if (nid !== undefined) prov.neighbors.push(nid);
+    }
+  }
+  // 格子命中索引（像素 -> 省份）
+  const provAtHex = {};
+  for (const p of provinces) provAtHex[p.q + ',' + p.r] = p.id;
+  return { provinces, provAtHex };
+}
+
+// 取省份
+function provAt(game, id) {
+  return (id >= 0 && id < game.map.provinces.length) ? game.map.provinces[id] : null;
+}
+
+// ---------- 创建新游戏 ----------
+// settings: { difficulty, turnCap, playerNation(国家索引), seed?, scenario? }
+function createGame(settings) {
+  settings = Object.assign({ difficulty: 'easy', turnCap: 120, playerNation: 0, scenario: 'free' }, settings || {});
+  const scn = getScenario(settings.scenario);
+  const nationDefs = scn.nations ? scn.nations : null;
+  const nationNames = nationDefs ? nationDefs.map(n => n.name) : Object.keys(WORLD_NATIONS);
+  const nationCount = nationNames.length;
+  const seed = (settings.seed !== undefined && settings.seed !== null)
+    ? settings.seed
+    : (scn.seed || Math.floor(Math.random() * 1e9));
+  settings.seed = seed;
+  const mw = scn.size ? scn.size.w : MAP_WIDTH;
+  const mh = scn.size ? scn.size.h : MAP_HEIGHT;
+
+  // 自选首都模式：生成地图时不分配给玩家首都/领土，由玩家点空地建立
+  const skip = settings.chooseCapital ? settings.playerNation : -1;
+  const hexMap = buildHexMap(seed, nationCount, mw, mh, skip);   // 生成大陆 + 分配国家
+  const built = buildProvinces(hexMap);
+  const provinces = built.provinces;
+
+  const nations = nationNames.map((name, i) => {
+    const def = nationDefs ? nationDefs[i] : null;
+    return {
+      id: i,
+      name,
+      color: def ? def.color : WORLD_NATIONS[name],
+      leader: def ? (def.leader || null) : (WORLD_LEADERS[name] || null),
+      isPlayer: i === settings.playerNation,
+      alive: true,
+      treasury: ECONOMY.startTreasury,
+      goldIncome: 0,
+      upkeep: 0,
+      population: 0,
+      units: 0,
+      tech: { melee: 0, ranged: 0, artillery: 0, navy: 0, air: 0, economy: 0, culture: 0, education: 0 },
+      techProgress: { melee: 0, ranged: 0, artillery: 0, navy: 0, air: 0, economy: 0, culture: 0, education: 0 },
+      techInvest: { melee: 0, ranged: 0, artillery: 0, navy: 0, air: 0, economy: 0, culture: 0, education: 0 },   // 每回合研究投入（滑条）
+      relations: {},
+      atWar: [],
+      allies: [],
+      trades: [],
+      policies: {},                     // 已实施的政策
+      resistance: 100,                  // 抵抗度：归零则自动投降
+      highestTiles: 0,                  // 历史最高领土格数
+      credibility: 50,                  // 国际信誉(可信度) 0~100
+    };
+  });
+  for (let i = 0; i < nationCount; i++)
+    for (let j = 0; j < nationCount; j++)
+      if (i !== j) nations[i].relations[j] = 0;
+
+  const game = {
+    version: 3,
+    settings,
+    scenario: scn.id !== 'free' ? scn.id : null,
+    map: { provinces, provAtHex: built.provAtHex, width: mw, height: mh },
+    nations,
+    playerId: settings.playerNation,
+    turn: 1,
+    phase: settings.chooseCapital ? 'place_capital' : 'player',   // player | ai | ended | place_capital
+    placeCapital: !!settings.chooseCapital,   // 自选首都进行中
+    selected: null,       // 选中省 id
+    active: null,         // 调派军队省 id
+    events: [],
+    winner: null,
+    tutorial: null,       // 教程状态 { step, ... }
+    _conqueredCount: 0,   // 玩家累计攻占敌省数（成就）
+    _colonizedCount: 0,   // 玩家累计殖民无主地数（成就）
+    _cityCount: 0,        // 玩家累计设立城市数（成就）
+    _playerDeclared: false,  // 玩家是否主动宣战过（成就）
+  };
+
+  // 剧本初始关系：宣战 / 结盟 / 阵营
+  if (scn.id !== 'free') {
+    if (scn.startWar) for (const [a, b] of scn.startWar) {
+      if (!nations[a] || !nations[b]) continue;
+      nations[a].atWar.push(b); nations[b].atWar.push(a);
+      adjustRelation(game, a, b, -50);
+    }
+    if (scn.startAlly) for (const [a, b] of scn.startAlly) {
+      if (!nations[a] || !nations[b]) continue;
+      nations[a].allies.push(b); nations[b].allies.push(a);
+      adjustRelation(game, a, b, 30);
+    }
+    if (scn.camp) {
+      for (const a of scn.camp.axis) for (const b of scn.camp.allies) {
+        if (!nations[a] || !nations[b]) continue;
+        if (!nations[a].atWar.includes(b)) nations[a].atWar.push(b);
+        if (!nations[b].atWar.includes(a)) nations[b].atWar.push(a);
+        adjustRelation(game, a, b, -50);
+      }
+    }
+  }
+
+  // 给部分无主土地放置土著守军（"土著政权"，需战斗击败才能殖民）；兵力零整不一，不超过 1000
+  for (const prov of provinces) {
+    if (prov.owner === -1 && !prov.army.length && Math.random() < 0.06) {
+      prov.army.push({ type: 'native', soldiers: 100 + Math.floor(Math.random() * 900) });
+      if (Math.random() < 0.12) prov.army.push({ type: 'native', soldiers: 100 + Math.floor(Math.random() * 900) });
+    }
+  }
+
+  GAME = game;
+  computeSeaNames(game);
+  resetArmyMoves(game);
+  // 开局即结算一次经济/兵力统计，让"士兵总数/人口"一开始就正确（含开局自带士兵）
+  for (const n of nations) nationIncome(game, n);
+  const p = nations[settings.playerNation];
+  if (scn.id !== 'free') {
+    addEvent(game, '📜 ' + scn.name + ' · 第 1 回合。你领导 ' + p.name + '，' + scn.desc);
+  } else {
+    addEvent(game, '🌍 苍澜大陆 · 第 1 回合。你领导 ' + p.name + '。');
+  }
+  return game;
+}
+
+// ---------- 事件日志 ----------
+function addEvent(game, text) {
+  if (!game) return;
+  game.events.push({ turn: game.turn, text: String(text) });
+  if (game.events.length > 300) game.events.shift();
+}
+
+// ---------- 结束回合 ----------
+function endTurn() {
+  if (!GAME || GAME.phase !== 'player' || GAME.winner !== null) return false;
+  GAME.phase = 'ai';
+
+  // 1) 经济结算
+  for (const n of GAME.nations) if (n.alive) applyEconomy(GAME, n);
+
+  // 2) AI 行动
+  for (const n of GAME.nations) if (!n.isPlayer && n.alive) runAI(GAME, n);
+
+  // 2.5) 随机事件（恐怖袭击/边境冲突/外交风云/经济事件）
+  triggerRandomEvent(GAME);
+
+  // 3) 抵抗度结算与投降 / 国际信誉
+  updateResistance(GAME);
+  updateCredibility(GAME);
+
+  // 4) 胜利判定
+  if (checkVictory(GAME) !== null) return true;
+
+  // 4) 新回合
+  GAME.turn++;
+  GAME.phase = 'player';
+  resetArmyMoves(GAME);
+  GAME.selected = null;
+  GAME.active = null;
+  addEvent(GAME, '☀️ 第 ' + GAME.turn + ' 回合开始');
+
+  checkVictory(GAME);
+  checkAchievements(GAME);
+  autoSave();
+  return GAME.winner === null;
+}
+
+// ---------- 胜利判定 ----------
+function checkVictory(game) {
+  if (game.winner !== null) return game.winner;
+  for (const n of game.nations) {
+    if (n.alive && !checkNationAlive(game, n)) addEvent(game, '💀 ' + n.name + ' 已覆灭');
+  }
+  const alive = game.nations.filter(n => n.alive);
+  if (alive.length === 0) { game.winner = -1; game.phase = 'ended'; return -1; }
+
+  const total = game.map.provinces.length;
+  const counts = {};
+  for (const prov of game.map.provinces) {
+    if (prov.owner !== -1) counts[prov.owner] = (counts[prov.owner] || 0) + 1;
+  }
+
+  if (alive.length === 1) {
+    game.winner = alive[0].id;
+    game.phase = 'ended';
+    addEvent(game, '🏆 ' + alive[0].name + ' 统一了世界！');
+    onVictory(game);
+    return game.winner;
+  }
+  for (const n of alive) {
+    const share = (counts[n.id] || 0) / total;
+    if (share >= VICTORY_DOMINANCE) {
+      game.winner = n.id;
+      game.phase = 'ended';
+      addEvent(game, '🏆 ' + n.name + ' 占领了 ' + Math.round(share * 100) + '% 的省份，达成统治！');
+      onVictory(game);
+      return game.winner;
+    }
+  }
+  if (game.settings.turnCap > 0 && game.turn >= game.settings.turnCap) {
+    let best = null, bestShare = -1;
+    for (const n of alive) {
+      const share = (counts[n.id] || 0) / total;
+      if (share > bestShare) { bestShare = share; best = n.id; }
+    }
+    game.winner = best;
+    game.phase = 'ended';
+    addEvent(game, '⏰ 回合上限到达，' + game.nations[best].name + ' 以 ' + Math.round(bestShare * 100) + '% 领土获胜');
+    onVictory(game);
+    return best;
+  }
+  return null;
+}
+
+// ---------- 存档 ----------
+function serializeGame(game) {
+  return JSON.stringify({
+    version: 3,
+    savedAt: new Date().toISOString(),
+    settings: game.settings,
+    map: { provinces: game.map.provinces, width: game.map.width, height: game.map.height },   // provAtHex 读档时重建
+    nations: game.nations,
+    playerId: game.playerId,
+    turn: game.turn,
+    phase: game.phase,
+    selected: game.selected,
+    active: game.active,
+    events: game.events,
+    winner: game.winner,
+    tutorial: game.tutorial,
+  });
+}
+
+function deserializeGame(json) {
+  const g = JSON.parse(json);
+  if (!g || g.version !== 3) throw new Error('存档版本不兼容（当前为苍澜大陆版），请开始新游戏');
+  if (!g.map || !g.map.provinces || !g.nations) throw new Error('存档数据损坏');
+  // 重建格子命中索引
+  if (!g.map.provAtHex) {
+    g.map.provAtHex = {};
+    for (const p of g.map.provinces) g.map.provAtHex[p.q + ',' + p.r] = p.id;
+  }
+  GAME = g;
+  return g;
+}
+
+function hasLocalStorage() {
+  try { return typeof localStorage !== 'undefined'; } catch (e) { return false; }
+}
+
+function saveSlot(slot) {
+  if (!hasLocalStorage()) return { ok: false, msg: '当前环境不支持本地存储' };
+  if (!GAME) return { ok: false, msg: '没有进行中的游戏' };
+  try {
+    localStorage.setItem(SAVE_KEY + slot, serializeGame(GAME));
+    return { ok: true, msg: '已保存到槽位「' + slot + '」' };
+  } catch (e) {
+    return { ok: false, msg: '保存失败：' + e.message };
+  }
+}
+
+function loadSlot(slot) {
+  if (!hasLocalStorage()) return { ok: false, msg: '当前环境不支持本地存储' };
+  const raw = localStorage.getItem(SAVE_KEY + slot);
+  if (!raw) return { ok: false, msg: '槽位为空' };
+  try {
+    deserializeGame(raw);
+    return { ok: true, msg: '已读取存档' };
+  } catch (e) {
+    return { ok: false, msg: '读取失败：' + e.message };
+  }
+}
+
+function deleteSlot(slot) {
+  if (hasLocalStorage()) localStorage.removeItem(SAVE_KEY + slot);
+}
+
+function listSlots() {
+  const out = [];
+  if (!hasLocalStorage()) return out;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.indexOf(SAVE_KEY) === 0) {
+      const slot = key.slice(SAVE_KEY.length);
+      try {
+        const g = JSON.parse(localStorage.getItem(key));
+        if (!g || g.version !== 3) continue;   // 跳过旧版本存档
+        out.push({ slot, turn: g.turn, nation: g.nations ? g.nations[g.playerId]?.name : '?', updated: g.savedAt || '' });
+      } catch (e) { /* 忽略损坏存档 */ }
+    }
+  }
+  return out;
+}
+
+function autoSave() {
+  if (GAME && GAME.phase !== 'ended') saveSlot('auto');
+}
+
+// ============ 副首都 / 首都沦陷 / 抵抗度 / 投降（参考钢铁雄心4） ============
+const SECONDARY_CAPITAL_COST = 80;
+
+// 在自己领土设立副首都（每个国家只能有一个）
+function establishSecondaryCapital(game, nation, prov) {
+  if (prov.owner !== nation.id) return { ok: false, msg: '不是你的领土' };
+  if (prov.capital) return { ok: false, msg: '主首都不可设为副首都' };
+  if (prov.secondaryCapital) return { ok: false, msg: '此处已是副首都' };
+  if (game.map.provinces.some(p => p.owner === nation.id && p.secondaryCapital)) return { ok: false, msg: '每个国家只能有一个副首都' };
+  if (nation.treasury < SECONDARY_CAPITAL_COST) return { ok: false, msg: '金币不足（需 ' + SECONDARY_CAPITAL_COST + '）' };
+  nation.treasury -= SECONDARY_CAPITAL_COST;
+  prov.secondaryCapital = true;
+  prov.city = true;
+  addEvent(game, '🏛️ ' + nation.name + ' 设立副首都');
+  return { ok: true, msg: '副首都设立成功' };
+}
+
+// 设立城市（区别于首都/副首都，提供城市产出与防守加成，可设多个）
+function establishCity(game, nation, prov) {
+  if (prov.owner !== nation.id) return { ok: false, msg: '不是你的领土' };
+  if (prov.city) return { ok: false, msg: '此处已是城市' };
+  if (nation.treasury < ECONOMY.cityCost) return { ok: false, msg: '金币不足（需 ' + ECONOMY.cityCost + '）' };
+  nation.treasury -= ECONOMY.cityCost;
+  prov.city = true;
+  if (nation.id === game.playerId) game._cityCount = (game._cityCount || 0) + 1;
+  addEvent(game, '🏙️ ' + nation.name + ' 在 ' + prov.name + ' 设立城市');
+  return { ok: true, msg: '城市设立成功' };
+}
+
+// 殖民无主地：需自己的军队驻守，花费金币后设为己方领土
+function colonizeProvince(game, nation, prov) {
+  if (prov.owner !== -1) return { ok: false, msg: '这块地已有人统治，无需殖民' };
+  if (!prov.army.length) return { ok: false, msg: '需有军队驻守才能殖民' };
+  if (prov.garrisonOwner !== nation.id) return { ok: false, msg: '需你的军队驻守才能殖民' };
+  if (nation.treasury < ECONOMY.colonizeCost) return { ok: false, msg: '金币不足（需 ' + ECONOMY.colonizeCost + '）' };
+  nation.treasury -= ECONOMY.colonizeCost;
+  prov.owner = nation.id;
+  prov.garrisonOwner = null;
+  if (nation.id === game.playerId) game._colonizedCount = (game._colonizedCount || 0) + 1;
+  if (nation.leader && nation.leader.apply === 'conquer') prov.pop += nation.leader.value;   // 征服者：殖民增加人口
+  addEvent(game, '🏴 ' + nation.name + ' 殖民了 ' + prov.name);
+  return { ok: true, msg: '🏴 殖民成功！' };
+}
+
+// 自选首都：玩家点空地后确认，在此设立首都并外扩初始领土，然后正式开局
+function finalizePlayerCapital(game, prov) {
+  const p = game.nations[game.playerId];
+  if (prov.owner !== -1 || prov.army.length) return { ok: false, msg: '请选择一块无主且无守军的空地' };
+  prov.owner = game.playerId;
+  prov.capital = true;
+  prov.city = true;
+  prov.pop = 3;
+  // 初始守军（兵力零整不一，不超过 1000）
+  for (let i = 0; i < (ECONOMY.startArmy || 2); i++) {
+    prov.army.push({ type: 'swordsman', soldiers: 100 + Math.floor(Math.random() * 900) });
+  }
+  // 从首都外扩分配初始领土（严格六连通）
+  const perNation = ECONOMY.startTilesPerNation || 5;
+  const frontier = [prov.id];
+  const seen = new Set([prov.id]);
+  let collected = 1;
+  while (collected < perNation && frontier.length) {
+    const cur = frontier.shift();
+    for (const nid of provAt(game, cur).neighbors) {
+      if (seen.has(nid)) continue;
+      seen.add(nid);
+      const np = provAt(game, nid);
+      if (np.owner !== -1) continue;
+      np.owner = game.playerId;
+      np.pop = 1 + Math.floor(Math.random() * 2);
+      collected++;
+      frontier.push(nid);
+      if (collected >= perNation) break;
+    }
+  }
+  // 结束选首都阶段
+  game.placeCapital = false;
+  game.phase = 'player';
+  game.pendingCapital = null;
+  game.selected = prov.id;
+  addEvent(game, '👑 你选择在 ' + prov.name + ' 建立首都');
+  nationIncome(game, p);
+  centerCameraOnProvince(game, prov, 0.9);
+  uiRefresh(game);
+  return { ok: true, msg: '👑 首都建立，开局！' };
+}
+
+// 攻占对方首都：大幅降低对方抵抗度，有副首都则迁都
+function handleCapitalFall(game, attacker, prov, defenderId) {
+  const def = game.nations[defenderId];
+  if (!def || !def.alive) return;
+  let penalty = 60;
+  if (attacker.leader && attacker.leader.apply === 'resistance') penalty += Math.abs(attacker.leader.value);
+  def.resistance = Math.max(0, def.resistance - penalty);
+  def.highestTiles = Math.max(def.highestTiles || 0, nationTerritoryCount(game, def));
+
+  const sec = game.map.provinces.find(p => p.owner === defenderId && p.secondaryCapital);
+  if (sec) {
+    sec.capital = true;
+    sec.secondaryCapital = false;
+    sec.city = true;
+    addEvent(game, '🏛️ ' + def.name + ' 首都沦陷，迁都至副首都（抵抗 -' + penalty + '）');
+  } else {
+    addEvent(game, '⚠️ ' + def.name + ' 的首都沦陷，抵抗意志大减（抵抗 -' + penalty + '）！');
+  }
+}
+
+// 每回合抵抗度结算：无首都持续衰减、领土大减加速、归零则投降
+function updateResistance(game) {
+  for (const n of game.nations) {
+    if (!n.alive) continue;
+    if (n.resistance === undefined) n.resistance = 100;
+    const cap = nationCapitalProvince(game, n);
+    const tiles = nationTerritoryCount(game, n);
+    if (n.highestTiles === undefined) n.highestTiles = tiles;
+    n.highestTiles = Math.max(n.highestTiles, tiles);
+
+    if (!cap) {
+      n.resistance = Math.max(0, n.resistance - 10);
+    } else {
+      n.resistance = Math.min(100, n.resistance + 3);
+    }
+    if (n.highestTiles > 0 && tiles < n.highestTiles * 0.4) {
+      n.resistance = Math.max(0, n.resistance - 8);
+    }
+    if (n.resistance <= 0) surrenderNation(game, n);
+  }
+}
+
+// 每回合国际信誉结算：和平红利 + 履约奖励
+function updateCredibility(game) {
+  for (const n of game.nations) {
+    if (!n.alive) continue;
+    if (n.credibility === undefined) n.credibility = 50;
+    let delta = 0;
+    if (n.atWar.length === 0) delta += 1;                       // 和平红利
+    if (n.trades.length + n.allies.length > 0 && n.atWar.length === 0) delta += 1;  // 履约守信
+    if (delta) n.credibility = clamp(n.credibility + delta, 0, 100);
+  }
+}
+
+// 投降：领土并入（交战中领土最多的敌国，若无则并入相邻国家）
+function surrenderNation(game, nation) {
+  let receiver = null, best = 0;
+  for (const eid of nation.atWar) {
+    const e = game.nations[eid];
+    if (!e || !e.alive) continue;
+    const t = nationTerritoryCount(game, e);
+    if (t > best) { best = t; receiver = e; }
+  }
+  if (!receiver) {
+    for (const prov of game.map.provinces) {
+      if (prov.owner !== nation.id) continue;
+      for (const nid of prov.neighbors) {
+        const o = game.map.provinces[nid].owner;
+        if (o !== -1 && o !== nation.id && game.nations[o] && game.nations[o].alive) { receiver = game.nations[o]; break; }
+      }
+      if (receiver) break;
+    }
+  }
+  if (!receiver) receiver = game.nations[game.playerId] || null;
+
+  for (const prov of game.map.provinces) {
+    if (prov.owner === nation.id) {
+      prov.owner = receiver ? receiver.id : -1;
+      prov.capital = false;
+      prov.secondaryCapital = false;
+      prov.garrisonOwner = null;
+      prov.army = [];
+    }
+  }
+  nation.alive = false;
+  nation.atWar = [];
+  nation.allies = [];
+  nation.trades = [];
+  addEvent(game, '🏳️ ' + nation.name + ' 已投降，领土并入 ' + (receiver ? receiver.name : '各方') + '！');
+  if (!getAchievements().historian) unlockAchievement('historian', game);
+}
+
+// ============ 随机事件（含恐怖袭击，刺激国际关系） ============
+const RANDOM_EVENT_CHANCE = 0.35;   // 每回合触发概率
+
+function triggerRandomEvent(game) {
+  if (Math.random() > RANDOM_EVENT_CHANCE) return;
+  const roll = Math.random();
+  if (roll < 0.30) eventTerror(game);
+  else if (roll < 0.45) eventBorderClash(game);
+  else if (roll < 0.60) eventDiplomatic(game);
+  else if (roll < 0.80) eventEconomic(game);
+  else eventSocial(game);
+}
+
+function randomNation(game, excludeId) {
+  const alive = game.nations.filter(n => n.alive && n.id !== excludeId);
+  return alive[Math.floor(Math.random() * alive.length)] || game.nations[game.playerId];
+}
+
+// 恐怖袭击：受害者受损，舆论归咎敌国/关系最差国，恶化关系
+function eventTerror(game) {
+  const target = randomNation(game, null);
+  if (!target || !target.alive) return;
+  const owned = game.map.provinces.filter(p => p.owner === target.id);
+  if (owned.length) {
+    const prov = owned[Math.floor(Math.random() * owned.length)];
+    prov.pop = Math.max(1, Math.round(prov.pop * 0.6));
+    prov.building = null;
+  }
+  let culprit = null;
+  for (const n of game.nations) {
+    if (n.id === target.id || !n.alive) continue;
+    if (target.atWar.includes(n.id)) { culprit = n; break; }
+    if (!culprit || (target.relations[n.id] || 0) < (target.relations[culprit.id] || 0)) culprit = n;
+  }
+  if (culprit) {
+    adjustRelation(game, target.id, culprit.id, -25);
+    culprit.credibility = clamp((culprit.credibility === undefined ? 50 : culprit.credibility) - 10, 0, 100);
+    addEvent(game, '💥 恐怖袭击！' + target.name + ' 境内遭袭，舆论直指 ' + culprit.name + '，两国关系急剧恶化！');
+  } else {
+    addEvent(game, '💥 恐怖袭击！' + target.name + ' 境内遭袭，社会动荡，人口与设施受损。');
+  }
+}
+
+// 边境冲突：相邻国关系恶化，小概率升级为战争
+function eventBorderClash(game) {
+  const a = randomNation(game, null);
+  let b = null;
+  for (const prov of game.map.provinces) {
+    if (prov.owner !== a.id) continue;
+    for (const nid of prov.neighbors) {
+      const o = game.map.provinces[nid].owner;
+      if (o !== -1 && o !== a.id) { b = game.nations[o]; break; }
+    }
+    if (b) break;
+  }
+  if (!b) return;
+  adjustRelation(game, a.id, b.id, -12);
+  if (Math.random() < 0.2) {
+    declareWar(game, a.id, b.id);
+    addEvent(game, '🚧 边境冲突升级！' + a.name + ' 与 ' + b.name + ' 爆发战争！');
+  } else {
+    addEvent(game, '🚧 边境冲突！' + a.name + ' 与 ' + b.name + ' 在边境摩擦，关系恶化。');
+  }
+}
+
+// 外交风云：两国关系随机升温/降温
+function eventDiplomatic(game) {
+  const a = randomNation(game, null);
+  const b = randomNation(game, a.id);
+  if (!b) return;
+  const positive = Math.random() < 0.5;
+  adjustRelation(game, a.id, b.id, positive ? 15 : -15);
+  addEvent(game, positive
+    ? '🤝 ' + a.name + ' 与 ' + b.name + ' 举行高层会晤，关系升温。'
+    : '😠 ' + a.name + ' 与 ' + b.name + ' 爆发外交争端，关系恶化。');
+}
+
+// 经济事件：丰收/瘟疫/金矿/市场崩盘
+function eventEconomic(game) {
+  const roll = Math.random();
+  if (roll < 0.4) {
+    for (const n of game.nations) if (n.alive) n.treasury += 40;
+    addEvent(game, '🌾 全球丰收！各国国库 +40 金币。');
+  } else if (roll < 0.6) {
+    const n = randomNation(game, null);
+    for (const prov of game.map.provinces) if (prov.owner === n.id) prov.pop = Math.max(1, Math.round(prov.pop * 0.9));
+    addEvent(game, '🦠 瘟疫肆虐 ' + n.name + '，人口锐减。');
+  } else if (roll < 0.8) {
+    const n = randomNation(game, null);
+    n.treasury += 100;
+    addEvent(game, '⛏️ ' + n.name + ' 发现金矿！国库 +100 金币。');
+  } else {
+    const n = randomNation(game, null);
+    n.treasury = Math.max(0, n.treasury - 50);
+    addEvent(game, '📉 ' + n.name + ' 遭遇市场崩盘，国库 -50 金币。');
+  }
+}
+
+// 社会事件：演讲提抵抗 / 守信提信誉
+function eventSocial(game) {
+  const n = randomNation(game, null);
+  if (Math.random() < 0.4) {
+    n.resistance = Math.min(100, (n.resistance === undefined ? 100 : n.resistance) + 5);
+    addEvent(game, '🎙️ ' + n.name + ' 领导人发表演讲，振奋民心（抵抗 +5）。');
+  } else {
+    n.credibility = clamp((n.credibility === undefined ? 50 : n.credibility) + 5, 0, 100);
+    addEvent(game, '⭐ ' + n.name + ' 恪守国际承诺，信誉提升（信誉 +5）。');
+  }
+}
+
+// ============ 成就系统 ============
+const ACH_KEY = 'empire_front_achievements';
+
+function getAchievements() {
+  try { return JSON.parse(localStorage.getItem(ACH_KEY)) || {}; } catch (e) { return {}; }
+}
+
+function unlockAchievement(id, game) {
+  if (!ACHIEVEMENTS[id]) return;
+  const got = getAchievements();
+  if (got[id]) return;
+  got[id] = true;
+  try { localStorage.setItem(ACH_KEY, JSON.stringify(got)); } catch (e) {}
+  const a = ACHIEVEMENTS[id];
+  toast('🏆 成就解锁：' + a.name);
+  const g = game || GAME;
+  if (g) addEvent(g, '🏆 成就解锁：' + a.icon + ' ' + a.name);
+  if (typeof Sfx !== 'undefined' && Sfx.win) Sfx.win();
+}
+
+// 集中检查玩家成就条件（每回合/关键动作后调用）
+function checkAchievements(game) {
+  if (!game) return;
+  const p = game.nations[game.playerId];
+  if (!p || !p.alive) return;
+  const got = getAchievements();
+  const total = game.map.provinces.length;
+  const pTiles = nationTerritoryCount(game, p);
+  if (!got.firstBlood && (game._conqueredCount || 0) >= 1) unlockAchievement('firstBlood', game);
+  if (!got.conqueror && (game._conqueredCount || 0) >= 30) unlockAchievement('conqueror', game);
+  if (!got.hegemon && pTiles >= total * 0.5) unlockAchievement('hegemon', game);
+  if (!got.rich && p.treasury >= 1000) unlockAchievement('rich', game);
+  if (!got.scholar && nationMilitaryLevel(p) >= 3 && p.tech.economy >= 3 && p.tech.navy >= 2 && p.tech.air >= 2) unlockAchievement('scholar', game);
+  if (!got.trader && p.trades.length >= 5) unlockAchievement('trader', game);
+  if (!got.builder && (p.buildCount || 0) >= 20) unlockAchievement('builder', game);
+  if (!got.survivor && p.atWar.length >= 3 && game.turn >= 20) unlockAchievement('survivor', game);
+  if (!got.million && (p.population || 0) >= 100) unlockAchievement('million', game);
+  if (!got.expansion && pTiles >= 50) unlockAchievement('expansion', game);
+  if (!got.golden && p.treasury >= 10000) unlockAchievement('golden', game);
+  if (!got.warlord && (game._conqueredCount || 0) >= 100) unlockAchievement('warlord', game);
+  if (!got.warmonger && p.atWar.length >= 5) unlockAchievement('warmonger', game);
+  if (!got.diplomat && (p.allies || []).length >= 3) unlockAchievement('diplomat', game);
+  if (!got.colonizer && (game._colonizedCount || 0) >= 15) unlockAchievement('colonizer', game);
+  if (!got.greatbuilder && (p.buildCount || 0) >= 50) unlockAchievement('greatbuilder', game);
+  if (!got.citylord && (game._cityCount || 0) >= 5) unlockAchievement('citylord', game);
+}
+
+// 胜利时检查统一/和平成就
+function onVictory(game) {
+  if (game.winner === null || game.winner === -1 || game.winner !== game.playerId) return;
+  if (!getAchievements().unifier) unlockAchievement('unifier', game);
+  if (!game._playerDeclared && !getAchievements().pacifist) unlockAchievement('pacifist', game);
+}
+
+</script>
+  <script>
+// renderer.js — 六边形随机大陆渲染与相机（v3）
+'use strict';
+
+const CAMERA = { x: 0, y: 0, zoom: 1 };
+// 放大到该比例以上才显示建筑/军队图标与数量（缩小后隐藏细节，避免遮挡，便于观察区块范围）
+const ZOOM_SHOW_DETAILS = 0.6;
+
+function getCanvas() {
+  return document.getElementById('game-canvas');
+}
+
+// 六边形地图整体像素尺寸（支持剧本自定义尺寸）
+function hexMapPixelSize(game) {
+  const w = (game && game.map && game.map.width) || MAP_WIDTH;
+  const h = (game && game.map && game.map.height) || MAP_HEIGHT;
+  return {
+    w: SQRT3 * HEX_SIZE * w,
+    h: 1.5 * HEX_SIZE * h + HEX_SIZE,
+  };
+}
+
+// 让地图适配视口并居中
+function fitCamera(game) {
+  const canvas = getCanvas();
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  const { w: mapW, h: mapH } = hexMapPixelSize(game);
+  let zoom = Math.min(W / mapW, H / mapH) * 0.94;
+  zoom = clamp(zoom, 0.15, 2.0);
+  CAMERA.zoom = zoom;
+  CAMERA.x = (W - mapW * zoom) / 2;
+  CAMERA.y = (H - mapH * zoom) / 2;
+}
+
+// 把镜头居中到指定省份（首都地块），用给定缩放便于看清
+function centerCameraOnProvince(game, prov, targetZoom) {
+  if (!prov || !prov.center) return;
+  const canvas = getCanvas();
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  const zoom = clamp(targetZoom || 1, 0.15, 3.0);
+  CAMERA.zoom = zoom;
+  CAMERA.x = W / 2 - prov.center.x * zoom;
+  CAMERA.y = H / 2 - prov.center.y * zoom;
+}
+
+// 屏幕坐标 -> 六边形轴向坐标
+function screenToHex(sx, sy) {
+  const wx = (sx - CAMERA.x) / CAMERA.zoom;
+  const wy = (sy - CAMERA.y) / CAMERA.zoom;
+  return pixelToHex(wx, wy);
+}
+
+function shadeColor(hex, percent) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const t = percent < 0 ? 0 : 255;
+  const p = Math.abs(percent);
+  return 'rgb(' + Math.round((t - r) * p + r) + ',' + Math.round((t - g) * p + g) + ',' + Math.round((t - b) * p + b) + ')';
+}
+
+function render(game) {
+  if (!game) return;
+  const canvas = getCanvas();
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  if (W === 0 || H === 0) return;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // 海洋背景
+  const sea = ctx.createLinearGradient(0, 0, 0, H);
+  sea.addColorStop(0, '#123a5e');
+  sea.addColorStop(1, '#0d2a47');
+  ctx.fillStyle = sea;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(CAMERA.x, CAMERA.y);
+  ctx.scale(CAMERA.zoom, CAMERA.zoom);
+
+  // 省份六边形
+  for (const prov of game.map.provinces) {
+    traceHexPath(ctx, prov.q, prov.r);
+    const t = TERRAINS[prov.terrain];
+    if (prov.owner !== -1) {
+      const nc = game.nations[prov.owner].color;
+      ctx.fillStyle = nc;
+      ctx.globalAlpha = 0.68;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (prov.garrisonOwner !== null && prov.garrisonOwner !== undefined) {
+      // 无主地但有军队驻守：按驻军归属者淡色显示，标注"待殖民"
+      const gc = game.nations[prov.garrisonOwner].color;
+      ctx.fillStyle = gc;
+      ctx.globalAlpha = 0.4;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.fillStyle = shadeColor(t.color, -0.12);
+      ctx.fill();
+    }
+    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = 'rgba(8,16,26,0.85)';
+    ctx.stroke();
+  }
+
+  // 已调派军队的可行动高亮
+  if (game.active) {
+    const ap = provAt(game, game.active);
+    if (ap) drawActionHighlight(ctx, game, ap);
+  }
+  if (game.selected) {
+    const sp = provAt(game, game.selected);
+    if (sp) {
+      traceHexPath(ctx, sp.q, sp.r);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+    }
+  }
+  if (game.active) {
+    const ap = provAt(game, game.active);
+    if (ap) {
+      traceHexPath(ctx, ap.q, ap.r);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#4ade80';
+      ctx.stroke();
+    }
+  }
+
+  // 建筑与军队图标
+  for (const prov of game.map.provinces) {
+    drawProvinceIcons(ctx, prov);
+  }
+
+  // 首都标签（格子本身不显示名字，参考文明系列）
+  if (CAMERA.zoom >= 0.5) drawCapitalLabels(ctx, game);
+
+  ctx.restore();
+}
+
+function drawProvinceIcons(ctx, prov) {
+  const c = prov.center;
+  // 缩小到一定比例后隐藏细节（建筑/军队图标与数量），避免缩放造成的遮挡，便于观察区块范围
+  const showDetails = CAMERA.zoom >= ZOOM_SHOW_DETAILS;
+  if (prov.capital) drawText(ctx, '★', c.x - 4, c.y - 6, 13 / CAMERA.zoom, '#ffd54a', true);
+  if (prov.secondaryCapital) drawText(ctx, '⚜️', c.x + 4, c.y + 4, 12 / CAMERA.zoom, '#7fb8ff', true);
+  if (showDetails) {
+    if (prov.building) drawEmoji(ctx, BUILDINGS[prov.building].icon, c.x, c.y, 16 / CAMERA.zoom);
+    if (prov.army.length) drawArmy(ctx, prov, c);
+  }
+}
+
+function drawArmy(ctx, prov, c) {
+  const native = nativeSoldiers(prov);
+  const soldiers = nationSoldiers(prov);
+  // 两军并存：左侧土著 🗡️、右侧士兵 🪖，各自标注士兵数
+  if (native > 0 && soldiers > 0) {
+    drawEmoji(ctx, NATIVE_ICON, c.x - 8, c.y, 22 / CAMERA.zoom);
+    drawArmyCount(ctx, c.x - 8, c.y + 11, native);
+    drawEmoji(ctx, SOLDIER_ICON, c.x + 8, c.y, 22 / CAMERA.zoom);
+    drawArmyCount(ctx, c.x + 8, c.y + 11, soldiers);
+  } else if (soldiers > 0) {
+    drawEmoji(ctx, SOLDIER_ICON, c.x, c.y, 23 / CAMERA.zoom);
+    drawArmyCount(ctx, c.x + 11, c.y + 11, soldiers);
+  } else if (native > 0) {
+    drawEmoji(ctx, NATIVE_ICON, c.x, c.y, 23 / CAMERA.zoom);
+    drawArmyCount(ctx, c.x + 11, c.y + 11, native);
+  }
+}
+
+function drawArmyCount(ctx, x, y, n) {
+  const fs = 13 / CAMERA.zoom;
+  ctx.font = 'bold ' + fs + 'px "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#000';
+  ctx.strokeText(String(n), x, y);
+  ctx.fillStyle = '#ffd54a';
+  ctx.fillText(String(n), x, y);
+}
+
+function drawActionHighlight(ctx, game, activeProv) {
+  // 陆地邻接：敌省红、空地绿、友方蓝
+  for (const nid of activeProv.neighbors) {
+    const p = game.map.provinces[nid];
+    let color = null;
+    if (p.owner === -1) color = 'rgba(74,222,128,0.45)';
+    else if (p.owner === game.playerId) color = 'rgba(96,165,250,0.3)';
+    else if (isAtWar(game, game.playerId, p.owner)) color = 'rgba(248,113,113,0.55)';
+    else color = 'rgba(96,165,250,0.2)';
+    traceHexPath(ctx, p.q, p.r);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+  // 同海区沿海省：青色（海运目标）
+  if (isCoastal(activeProv) && hasNavy(activeProv)) {
+    for (const p of game.map.provinces) {
+      if (p.id === activeProv.id) continue;
+      if (p.sea === activeProv.sea) {
+        traceHexPath(ctx, p.q, p.r);
+        ctx.fillStyle = 'rgba(34,211,238,0.35)';
+        ctx.fill();
+      }
+    }
+  }
+}
+
+function drawCapitalLabels(ctx, game) {
+  ctx.font = 'bold ' + (13 / CAMERA.zoom) + 'px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (const n of game.nations) {
+    if (!n.alive) continue;
+    const cap = nationCapitalProvince(game, n);
+    if (!cap) continue;
+    const c = cap.center;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.strokeText(n.name, c.x, c.y + 12 / CAMERA.zoom);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(n.name, c.x, c.y + 12 / CAMERA.zoom);
+  }
+}
+
+function drawEmoji(ctx, emoji, x, y, px) {
+  ctx.font = px + 'px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, x, y);
+}
+
+function drawText(ctx, text, x, y, px, color, bold) {
+  ctx.font = (bold ? 'bold ' : '') + px + 'px "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+</script>
+  <script>
+// ui.js — DOM 面板渲染与交互（v3 六边形版）
+'use strict';
+
+function $(id) { return document.getElementById(id); }
+function fmt(n) { return Number(n).toLocaleString(); }
+
+const menuSelection = { nation: 0, difficulty: 'normal', turnCap: DEFAULT_TURN_CAP, scenario: 'free' };
+
+// ---------- Toast ----------
+let toastTimer = null;
+function toast(msg) {
+  const el = $('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ---------- 顶部信息栏 ----------
+function uiRefresh(game) {
+  if (!game) return;
+  const p = game.nations[game.playerId];
+  $('turn-info').textContent = '回合 ' + game.turn;
+  $('nation-info').innerHTML = '<span class="dot" style="background:' + p.color + '"></span> ' + p.name;
+  const net = Math.max(0, p.goldIncome - p.upkeep);
+  $('treasury').textContent = '💰 ' + fmt(p.treasury) + (net ? ' (+' + fmt(net) + '/回合)' : '');
+  $('era-info').textContent = '陆 ' + nationMilitaryLevel(p) + ' 海 ' + p.tech.navy + ' 空 ' + p.tech.air + ' 经 ' + p.tech.economy +
+    ' · 人口 ' + Math.round(p.population) + '人';
+
+  uiRenderProvincePanel(game);
+  uiRenderEvents(game);
+
+  const hint = $('hint');
+  if (game.phase === 'place_capital') {
+    hint.textContent = '点击地图上的空地选中作为首都，再点左侧「👑 在此建立首都」确认开局';
+  } else if (game.active) {
+    const ap = provAt(game, game.active);
+    hint.textContent = ap && ap.army.length
+      ? '已调派军队（余移动力 ' + (ap.movesRemaining || 0) + '）— 点邻接省移动/进攻，点同海区沿海省海运，Esc 取消'
+      : '';
+  } else {
+    hint.textContent = '点己方军队省 → 点「调派这支军队」→ 点目标格前往（左键确认 / 右键取消）；滚轮缩放、拖拽平移';
+  }
+}
+
+// ---------- 左侧：国家概况（常驻）+ 选中省详情（叠加） ----------
+let nationOverviewCollapsed = false;   // 国家概况折叠状态（跨刷新保留）
+function applyNationCollapse() {
+  const el = $('nation-overview');
+  if (el) el.classList.toggle('collapsed', nationOverviewCollapsed);
+}
+function uiRenderProvincePanel(game) {
+  const panel = $('tile-panel');
+  const p = game.nations[game.playerId];
+  // —— 国家概况：始终显示，不随点击格子而消失 ——
+  const leader = p.leader;
+  let html = '<div class="hint-text">点击格子查看详情 · 滚轮缩放 · 拖拽平移 · 右键取消调派</div>';
+  // 国家概况：微信置顶式可折叠面板（点击标题展开 / 再次点击收起）
+  html += '<div class="coll" id="nation-overview">' +
+    '<div class="coll-head" data-toggle="nation-overview"><span class="coll-title">🏰 国家概况</span><span class="coll-arrow">▾</span></div>' +
+    '<div class="coll-body">';
+  if (leader) {
+    html += '<div class="tile-meta">' + leader.icon + ' ' + leader.name + ' <span class="dim">· ' + leader.trait + '</span></div>' +
+      '<div class="tile-meta dim">' + leader.desc + '</div>';
+  }
+  html += '<div class="tile-meta">🪖 士兵总数 ' + Math.round(p.soldiers || 0) + '人</div>' +
+    '<div class="tile-meta">' + resistanceIcon(p.resistance) + ' 抵抗度 ' + Math.round(p.resistance) + ' / 100</div>' +
+    '<div class="tile-meta">🤝 国际信誉 ' + Math.round(p.credibility || 50) + ' / 100</div>' +
+    '<div class="section-title">治理</div>' +
+    '<button class="btn action-btn block" data-action="policy">📜 国家政策</button>' +
+    '<button class="btn action-btn block" data-action="tech">🔬 打开科技树</button>';
+  html += '</div></div>';
+
+  // —— 选中省详情：点格子后叠加显示在下半部分 ——
+  if (game.selected !== null && game.selected !== undefined) {
+    const prov = provAt(game, game.selected);
+    if (prov) {
+      html += '<div class="section-title">选中格</div>';
+      const t = TERRAINS[prov.terrain];
+      const ownerId = provOwnerId(prov);
+  const ownerName = ownerId === -1
+    ? (prov.army.length ? '土著政权' : '无政权')
+    : game.nations[ownerId].name + (prov.owner === -1 ? '（驻军待殖民）' : '');
+  const ownerColor = ownerId === -1 ? '#666' : game.nations[ownerId].color;
+
+  const seaName = (prov.sea !== null && prov.sea !== undefined && game.seaNames) ? game.seaNames[prov.sea] : null;
+  const tileName = (prov.capital ? '👑 ' : '') + t.name + (seaName ? ' · 沿海' : '');
+  html += '<div class="tile-name">' + tileName + '</div>';
+  html += '<div class="tile-meta">国家：<span class="dot" style="background:' + ownerColor + '"></span> ' + ownerName + '</div>';
+  html += '<div class="tile-meta">地形：' + t.name + (seaName ? ' · 沿海(' + seaName + ')' : ' · 内陆') + '</div>';
+  html += '<div class="tile-meta">人口 ' + fmt(Math.round(prov.pop)) + '万 · 产出 💰' + fmt(Math.round(provinceIncome(game, prov))) + '/回合</div>';
+  if (prov.capital) html += '<div class="tile-meta">👑 首都</div>';
+  if (prov.building) html += '<div class="tile-meta">' + BUILDINGS[prov.building].icon + ' ' + BUILDINGS[prov.building].name + '</div>';
+
+  if (prov.army.length) {
+    const nat = nativeCount(prov);
+    const sum = stackSummary(prov);
+    const parts = [];
+    if (nat > 0) parts.push(NATIVE_ICON + ' 土著军 ' + fmt(nat) + ' 名');
+    for (const k of Object.keys(sum)) parts.push(UNIT_TYPES[k].icon + ' ' + UNIT_TYPES[k].name + ' ' + fmt(sum[k]) + ' 名');
+    html += '<div class="army-line">军队：' + parts.join('　') + '</div>';
+  }
+
+  // 自选首都阶段：显示"在此建立首都"按钮
+  if (game.phase === 'place_capital') {
+    if (prov.owner === -1 && prov.army.length === 0) {
+      html += '<button class="btn primary block" data-action="establishCapital">👑 在此建立首都</button>';
+    } else {
+      html += '<div class="tile-meta dim">这块地已有主或有守军，不可作为首都</div>';
+    }
+  }
+
+  if (provOwnerId(prov) === game.playerId && game.phase === 'player' && prov.army.length) {
+    if (game.active === prov.id) {
+      html += '<button class="btn danger-btn block" data-action="cancelArmy">✖ 取消调派</button>';
+    } else if (prov.movesRemaining > 0) {
+      html += '<button class="btn action-btn block" data-action="selectArmy">⚔️ 调派这支军队</button>';
+    }
+  }
+
+  // 己方驻军的无主地 → 殖民按钮
+  if (prov.owner === -1 && prov.army.length > 0 && prov.garrisonOwner === game.playerId && game.phase === 'player') {
+    html += '<button class="btn action-btn block" data-action="colonize">🏴 殖民（驻军占领此地）<span class="cost">💰' + ECONOMY.colonizeCost + '</span></button>';
+  }
+
+  if (prov.owner === game.playerId && game.phase === 'player') {
+    // 副首都
+    if (!prov.capital && !prov.secondaryCapital) {
+      html += '<button class="btn action-btn block" data-action="secondaryCapital">🏛️ 设立副首都<span class="cost">💰' + SECONDARY_CAPITAL_COST + '</span></button>';
+    }
+    // 城市
+    if (!prov.city) {
+      html += '<button class="btn action-btn block" data-action="city">🏙️ 设立城市<span class="cost">💰' + ECONOMY.cityCost + '</span></button>';
+    }
+    // 建造（按科技解锁）
+    const buildable = Object.values(BUILDINGS).filter(b =>
+      b.mil <= nationMilitaryLevel(p) && b.eco <= p.tech.economy && (!b.naval || isCoastal(prov))
+    );
+    if (buildable.length) {
+      html += '<div class="section-title">建造</div><div class="btn-grid">';
+      for (const b of buildable) html += actionBtn(p, b, 'build');
+      html += '</div>';
+    }
+    // 征募（按科技解锁）
+    const recruitables = unlockedUnits(p).filter(u => !u.naval || isCoastal(prov));
+    if (recruitables.length) {
+      html += '<div class="section-title">征募</div><div class="btn-grid">';
+      for (const u of recruitables) html += actionBtn(p, u, 'recruit');
+      html += '</div>';
+    }
+    html += '<div class="section-title">科技研究</div><button class="btn action-btn block" data-action="tech">🔬 打开科技树</button>';
+      }   // end if(prov.owner === playerId)
+    }   // end if(prov)
+  }   // end if(selected)
+
+  panel.innerHTML = html;
+  bindPanelButtons(panel);
+  // 国家概况折叠开关
+  const ov = panel.querySelector('[data-toggle="nation-overview"]');
+  if (ov) ov.addEventListener('click', () => { nationOverviewCollapsed = !nationOverviewCollapsed; applyNationCollapse(); });
+  applyNationCollapse();
+}
+
+function bindPanelButtons(panel) {
+  panel.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => handlePanelAction(btn.dataset.action, btn.dataset.target));
+    // 悬停显示 buff 说明（建筑 / 副首都 / 城市），移开淡出
+    const hoverText = getHoverBuff(btn);
+    if (hoverText) {
+      btn.addEventListener('mouseenter', () => showBuildTip(hoverText));
+      btn.addEventListener('mouseleave', hideBuildTip);
+    }
+  });
+}
+// 按钮悬停 buff 文案：建筑、副首都、城市
+function getHoverBuff(btn) {
+  const a = btn.dataset.action;
+  if (a === 'build' && BUILDINGS[btn.dataset.target]) {
+    const b = BUILDINGS[btn.dataset.target];
+    return b.icon + ' ' + b.name + '：' + b.buff;
+  }
+  if (a === 'secondaryCapital') {
+    return '🏛️ 设立副首都：产出 +' + ECONOMY.secondaryCapitalGold + ' 金币/回合；首都沦陷时自动迁都至此（全图仅一座）';
+  }
+  if (a === 'city') {
+    return '🏙️ 设立城市：产出 +' + ECONOMY.cityGoldBonus + ' 金币/回合，人口增长 +' + Math.round(ECONOMY.cityGrowth * 100) + '%/回合';
+  }
+  return null;
+}
+
+// ---------- 建筑悬停 buff 提示 ----------
+function showBuildTip(text) {
+  const tip = $('build-tip');
+  if (!tip) return;
+  tip.textContent = text;
+  tip.classList.remove('hidden');
+  tip.classList.add('show');
+}
+function hideBuildTip() {
+  const tip = $('build-tip');
+  if (!tip) return;
+  tip.classList.remove('show');
+  setTimeout(() => { if (tip && !tip.classList.contains('show')) tip.classList.add('hidden'); }, 350);
+}
+
+// ---------- 通用滑条弹窗（行进士兵数等） ----------
+let sliderOnConfirm = null;
+function openSlider(title, info, min, max, step, value, onConfirm) {
+  $('slider-title').textContent = title;
+  $('slider-info').textContent = info;
+  const inp = $('slider-input');
+  inp.min = String(min); inp.max = String(max); inp.step = String(step);
+  inp.value = String(value);
+  $('slider-value').textContent = value;
+  sliderOnConfirm = onConfirm;
+  $('slider-overlay').classList.remove('hidden');
+}
+function closeSlider() {
+  $('slider-overlay').classList.add('hidden');
+  sliderOnConfirm = null;
+}
+function bindSlider() {
+  const inp = $('slider-input');
+  if (!inp) return;
+  inp.addEventListener('input', () => { $('slider-value').textContent = inp.value; });
+  $('slider-confirm').addEventListener('click', () => {
+    if (sliderOnConfirm) sliderOnConfirm(parseInt($('slider-input').value, 10) || 1);
+    closeSlider();
+  });
+  $('slider-cancel').addEventListener('click', closeSlider);
+}
+
+function actionBtn(p, def, kind) {
+  const disabled = p.treasury < def.cost;
+  return '<button class="btn action-btn' + (disabled ? ' disabled' : '') + '" data-action="' + kind + '" data-target="' + def.id + '">' +
+    def.icon + ' ' + def.name + '<span class="cost">💰' + def.cost + '</span></button>';
+}
+
+function handlePanelAction(action, target) {
+  if (!GAME) return;
+  // 自选首都：在 place_capital 阶段点击"建立首都"
+  if (action === 'establishCapital') {
+    const capProv = provAt(GAME, GAME.selected);
+    const res = capProv ? finalizePlayerCapital(GAME, capProv) : null;
+    if (res && res.msg) toast(res.msg);
+    if (res && res.ok) { Sfx.build(); $('phase-banner').textContent = ''; }
+    else Sfx.click();
+    return;
+  }
+  if (GAME.phase !== 'player') return;
+  // 无需选中格子的治理操作
+  if (action === 'policy') { uiOpenPolicy(GAME); Sfx.click(); return; }
+  if (action === 'tech') { uiOpenTech(GAME); Sfx.click(); return; }
+  if (GAME.selected === null) return;
+  const prov = provAt(GAME, GAME.selected);
+  if (!prov) return;
+  const p = GAME.nations[GAME.playerId];
+  let res = null;
+  if (action === 'build') { res = buildBuilding(GAME, p, prov, target); Sfx[res && res.ok ? 'build' : 'click'](); }
+  else if (action === 'recruit') { res = recruitUnit(GAME, p, prov, target); Sfx[res && res.ok ? 'recruit' : 'click'](); }
+  else if (action === 'selectArmy') { GAME.active = prov.id; Sfx.select(); }
+  else if (action === 'cancelArmy') { GAME.active = null; Sfx.click(); }
+  else if (action === 'secondaryCapital') { res = establishSecondaryCapital(GAME, p, prov); Sfx[res.ok ? 'build' : 'click'](); }
+  else if (action === 'city') { res = establishCity(GAME, p, prov); Sfx[res.ok ? 'build' : 'click'](); }
+  else if (action === 'colonize') { res = colonizeProvince(GAME, p, prov); Sfx[res.ok ? 'build' : 'click'](); }
+  if (res && res.msg) toast(res.msg);
+  if (res && res.ok) {
+    if (action === 'build') tutorialCheck(GAME, 'build');
+    else if (action === 'recruit') tutorialCheck(GAME, 'recruit');
+    else if (action === 'colonize') tutorialCheck(GAME, 'colonize');
+  }
+  uiRefresh(GAME);
+}
+
+// ---------- 科技树界面（横向节点 + 前置跳转） ----------
+function uiOpenTech(game) {
+  if (!game) return;
+  const p = game.nations[game.playerId];
+  if (!p.techInvest) { p.techInvest = {}; for (const k of Object.keys(TECH_TREE)) p.techInvest[k] = 0; }
+  let html = '';
+  for (const track of Object.keys(TECH_TREE)) {
+    const levels = TECH_TREE[track];
+    const cur = p.tech[track] || 0;
+    const openUnmet = techOpenUnmet(p, track);
+    html += '<div class="tech-track"><div class="tech-track-title">' + TECH_TRACK_NAMES[track] + '</div>';
+    if (openUnmet) {
+      const nm = TECH_TRACK_NAMES[openUnmet.t] + '·' + (TECH_TREE[openUnmet.t] && TECH_TREE[openUnmet.t][openUnmet.l] ? TECH_TREE[openUnmet.t][openUnmet.l].name : openUnmet.l);
+      html += '<div class="tech-open-lock" data-track="' + track + '" data-jump="' + openUnmet.t + '" data-lvl="' + openUnmet.l + '">🔒 本线未开启，需先研究 ' + nm + '（点击跳转）</div>';
+    }
+    html += '<div class="tech-nodes-row">';
+    for (const lv of levels) {
+      const owned = lv.id <= cur;
+      const isNext = lv.id === cur + 1;
+      const unmet = (openUnmet ? [openUnmet] : []).concat((lv.req || []).filter(r => (p.tech[r.t] || 0) < r.l));
+      let cls = 'tech-node' + (owned ? ' owned' : '') + (isNext ? ' next' : '') + (unmet.length ? ' locked' : '');
+      let label = lv.name;
+      if (owned) label += ' ✔';
+      else if (isNext) label += ' ' + Math.floor(p.techProgress[track] || 0) + '/' + lv.cost;
+      else if (unmet.length) label += ' 🔒';
+      const reqInfo = unmet.map(r => TECH_TRACK_NAMES[r.t] + '·' + (TECH_TREE[r.t] && TECH_TREE[r.t][r.l] ? TECH_TREE[r.t][r.l].name : r.l)).join('、');
+      html += '<div class="' + cls + '" data-track="' + track + '" data-lvl="' + lv.id + '">' + label +
+        (reqInfo ? '<div class="tech-req">需:' + reqInfo + '</div>' : '') + '</div>';
+    }
+    html += '</div>';
+    const inv = p.techInvest[track] || 0;
+    html += '<div class="tech-slider-row"><label>每回合投入 💰</label>' +
+      '<input type="range" class="tech-slider" data-track="' + track + '" min="0" max="100" step="5" value="' + inv + '">' +
+      '<span class="tech-slider-val" data-val="' + track + '">💰' + inv + '/回合</span></div>' +
+      '<div class="tech-slider-hint">国库 💰' + p.treasury + ' · 已投入累计 💰' + Math.floor(p.techProgress[track] || 0) + '</div>';
+    html += '</div>';
+  }
+  const canvas = $('tech-canvas');
+  canvas.innerHTML = html;
+  // 重新打开时回到左上角（避免停留在上次拖拽位置）
+  const vp = $('tech-viewport');
+  if (vp) { vp.scrollLeft = 0; vp.scrollTop = 0; }
+  canvas.querySelectorAll('.tech-slider').forEach(sl => {
+    sl.addEventListener('input', () => {
+      const tr = sl.dataset.track;
+      p.techInvest[tr] = parseInt(sl.value, 10) || 0;
+      canvas.querySelector('[data-val="' + tr + '"]').textContent = '💰' + p.techInvest[tr] + '/回合';
+      tutorialCheck(game, 'tech');
+    });
+  });
+  // 未开启的科技线横幅：点击跳转到开启前置
+  canvas.querySelectorAll('.tech-open-lock').forEach(el => {
+    el.addEventListener('click', () => jumpToTech(el.dataset.jump, parseInt(el.dataset.lvl, 10)));
+  });
+  // 节点点击：点击"下一个"直接投入一次；点击锁定节点 → 跳转到所需前置
+  canvas.querySelectorAll('.tech-node').forEach(nd => {
+    nd.addEventListener('click', () => {
+      const tr = nd.dataset.track, lvl = parseInt(nd.dataset.lvl, 10);
+      const def = TECH_TREE[tr][lvl];
+      if (nd.classList.contains('locked')) {
+        const unmet = (def.req || []).find(r => (p.tech[r.t] || 0) < r.l);
+        if (unmet) { toast('🔗 需要先研究：' + TECH_TRACK_NAMES[unmet.t] + '·' + (TECH_TREE[unmet.t][unmet.l] ? TECH_TREE[unmet.t][unmet.l].name : unmet.l)); jumpToTech(unmet.t, unmet.l); }
+      } else if (nd.classList.contains('next')) {
+        const res = investTech(game, p, tr, Math.max(ECONOMY.aiTechInvest, 10));
+        toast(res.msg);
+        uiRefresh(game); uiOpenTech(game);
+      }
+    });
+  });
+  $('tech-overlay').classList.remove('hidden');
+  bindTechDrag();
+}
+
+// 跳转并高亮指定科技节点（滚动视口到该节点居中）
+function jumpToTech(track, level) {
+  uiOpenTech(GAME);
+  const vp = $('tech-viewport');
+  const el = vp.querySelector('[data-track="' + track + '"][data-lvl="' + level + '"]');
+  if (el) {
+    el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+    el.classList.add('jump-highlight');
+    setTimeout(() => el.classList.remove('jump-highlight'), 1500);
+  }
+}
+
+// 科技树拖拽平移（钢铁雄心4式：按住空白处拖动）
+let techDrag = null, techDragBound = false;
+function bindTechDrag() {
+  const vp = $('tech-viewport');
+  if (!vp || techDragBound) return;
+  techDragBound = true;
+  vp.addEventListener('mousedown', e => {
+    // 点击节点/滑条/按钮时不启动拖拽
+    if (e.target.closest('.tech-node, .tech-slider, .btn, button, .tech-open-lock')) return;
+    techDrag = { x: e.clientX, y: e.clientY, sl: vp.scrollLeft, st: vp.scrollTop, moved: false };
+    vp.classList.add('dragging');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!techDrag) return;
+    const dx = e.clientX - techDrag.x, dy = e.clientY - techDrag.y;
+    if (!techDrag.moved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) techDrag.moved = true;
+    if (techDrag.moved) { vp.scrollLeft = techDrag.sl - dx; vp.scrollTop = techDrag.st - dy; }
+  });
+  window.addEventListener('mouseup', () => {
+    techDrag = null;
+    vp.classList.remove('dragging');
+  });
+}
+
+// ---------- 政策界面 ----------
+function uiOpenPolicy(game) {
+  if (!game) return;
+  const p = game.nations[game.playerId];
+  let html = '';
+  for (const pol of Object.values(POLICIES)) {
+    const max = pol.max || 3;
+    const lvl = (p.policies && p.policies[pol.id]) || 0;
+    const afford = p.treasury >= pol.cost;
+    let dots = '';
+    for (let i = 1; i <= max; i++) dots += '<span class="pol-dot' + (i <= lvl ? ' on' : '') + '"></span>';
+    html += '<div class="policy-card">' +
+      '<div class="policy-name">' + pol.icon + ' ' + pol.name +
+        ' <span class="policy-lvl">Lv ' + lvl + '/' + max + '</span></div>' +
+      '<div class="policy-desc">' + pol.desc + '</div>' +
+      '<div class="pol-dots">' + dots + '</div>' +
+      (lvl >= max
+        ? '<div class="policy-owned">已满级 ✔</div>'
+        : '<button class="btn small policy-enact" data-policy="' + pol.id + '"' + (afford ? '' : ' disabled') + '>升级 💰' + pol.cost + '</button>') +
+      '</div>';
+  }
+  $('policy-body').innerHTML = html;
+  $('policy-body').querySelectorAll('.policy-enact').forEach(btn => {
+    btn.addEventListener('click', () => doEnactPolicy(btn.dataset.policy));
+  });
+  $('policy-overlay').classList.remove('hidden');
+}
+
+function doEnactPolicy(policyId) {
+  if (!GAME) return;
+  const p = GAME.nations[GAME.playerId];
+  const res = enactPolicy(GAME, p, policyId);
+  toast(res.msg);
+  Sfx[res.ok ? 'build' : 'click']();
+  uiRefresh(GAME);
+  uiOpenPolicy(GAME);
+}
+
+// ---------- 成就界面 ----------
+function uiOpenAchievements() {
+  const got = getAchievements();
+  let html = '';
+  for (const a of Object.values(ACHIEVEMENTS)) {
+    const owned = !!got[a.id];
+    html += '<div class="ach-card' + (owned ? ' owned' : '') + '">' +
+      '<div class="ach-icon">' + a.icon + '</div>' +
+      '<div class="ach-info"><div class="ach-name">' + a.name + '</div><div class="ach-desc">' + a.desc + '</div></div>' +
+      (owned ? '<div class="ach-state done">✔</div>' : '<div class="ach-state">🔒</div>') +
+      '</div>';
+  }
+  $('achievements-body').innerHTML = html;
+  $('achievements-overlay').classList.remove('hidden');
+}
+
+// ---------- 事件日志 ----------
+function uiRenderEvents(game) {
+  const list = $('event-list');
+  if (!game.events.length) { list.innerHTML = '<div class="event-item">暂无事件</div>'; return; }
+  const recent = game.events.slice(-80).reverse();
+  list.innerHTML = recent.map(e =>
+    '<div class="event-item"><span class="ev-turn">T' + e.turn + '</span> ' + e.text + '</div>'
+  ).join('');
+}
+
+// ---------- 开始菜单 ----------
+function uiSetupMenu() {
+  const df = $('difficulty');
+  df.innerHTML = Object.values(DIFFICULTIES).map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
+  df.value = menuSelection.difficulty;
+  const sc = $('scenario');
+  sc.innerHTML = Object.values(SCENARIOS).map(s => '<option value="' + s.id + '">' + s.name + '</option>').join('');
+  sc.value = menuSelection.scenario;
+  sc.addEventListener('change', () => {
+    menuSelection.scenario = sc.value;
+    menuSelection.nation = 0;
+    renderNationPicker();
+    Sfx.click();
+  });
+  $('turn-cap').value = menuSelection.turnCap;
+  renderNationPicker();
+
+  $('btn-start').addEventListener('click', uiStartGame);
+  $('btn-tutorial').addEventListener('click', uiStartTutorial);
+  $('btn-continue').addEventListener('click', () => {
+    $('menu-overlay').classList.add('hidden');
+    if (GAME) {
+      if (GAME.winner !== null) uiShowVictory(GAME);
+      else uiRefresh(GAME);
+    }
+  });
+}
+
+function renderNationPicker() {
+  const scn = getScenario(menuSelection.scenario);
+  const names = scn.nations ? scn.nations.map(n => n.name) : Object.keys(WORLD_NATIONS);
+  const colors = scn.nations ? scn.nations.map(n => n.color) : Object.values(WORLD_NATIONS);
+  // 可玩国家数与当前剧本选项联动
+  const cc = $('nation-count');
+  if (cc) cc.textContent = String(names.length);
+  const box = $('nation-picker');
+  box.innerHTML = names.map((nm, i) => {
+    const sel = i === menuSelection.nation ? ' selected' : '';
+    return '<div class="nation-chip' + sel + '" data-idx="' + i + '" style="--nc:' + colors[i] + '">' + nm + '</div>';
+  }).join('');
+  box.querySelectorAll('.nation-chip').forEach(el => {
+    el.addEventListener('click', () => {
+      menuSelection.nation = parseInt(el.dataset.idx, 10);
+      renderNationPicker();
+      Sfx.click();
+    });
+  });
+}
+
+function uiStartGame() {
+  const turnCap = Math.max(0, parseInt($('turn-cap').value, 10) || 0);
+  const scn = getScenario(menuSelection.scenario);
+  const nCount = scn.nations ? scn.nations.length : Object.keys(WORLD_NATIONS).length;
+  startNewGame({
+    difficulty: $('difficulty').value,
+    turnCap,
+    playerNation: Math.min(menuSelection.nation, nCount - 1),
+    scenario: menuSelection.scenario,
+    chooseCapital: scn.id === 'free',   // 自由大陆允许玩家自选首都
+  }, false);
+}
+
+function uiStartTutorial() {
+  $('menu-overlay').classList.add('hidden');
+  startTutorialGame();
+}
+
+// ---------- 外交界面 ----------
+function uiOpenDiplomacy(game) {
+  if (!game) return;
+  const p = game.nations[game.playerId];
+  let html = '';
+  for (const n of game.nations) {
+    if (n.id === game.playerId || !n.alive) continue;
+    const rel = p.relations[n.id] || 0;
+    const war = isAtWar(game, game.playerId, n.id);
+    const allied = isAllied(game, game.playerId, n.id);
+    const trade = hasTrade(game, game.playerId, n.id);
+    const power = nationPower(game, n);
+    const status = (war ? '⚔️ 交战 ' : '') + (allied ? '🤝 盟友 ' : '') + (trade ? '💰 贸易 ' : '') +
+      (allied || trade || war ? '' : '中立') + ' · 信誉 ' + Math.round(n.credibility || 50);
+    html += '<div class="dip-row">' +
+      '<div class="dip-nation"><span class="dot" style="background:' + n.color + '"></span> ' + n.name + '</div>' +
+      '<div class="dip-rel">关系 ' + rel + '</div>' +
+      '<div class="dip-power">实力 ' + power.score + '（' + power.tiles + '省）</div>' +
+      '<div class="dip-status">' + status + '</div>' +
+      '<div class="dip-btns">' +
+      (war
+        ? '<button class="btn small" onclick="uiDipAction(' + n.id + ',\'peace\')">🕊️ 议和</button>'
+        : '<button class="btn small danger" onclick="uiDipAction(' + n.id + ',\'war\')">⚔️ 宣战</button>') +
+      (!allied && !war ? '<button class="btn small" onclick="uiDipAction(' + n.id + ',\'ally\')">🤝 结盟</button>' : '') +
+      (!trade && !war ? '<button class="btn small" onclick="uiDipAction(' + n.id + ',\'trade\')">💰 通商</button>' : '') +
+      '<button class="btn small" onclick="uiDipAction(' + n.id + ',\'gift\')">🎁 赠金</button>' +
+      '</div></div>';
+  }
+  if (!html) html = '<div class="hint-text">没有可外交的对象</div>';
+  $('diplomacy-body').innerHTML = html;
+  $('diplomacy-overlay').classList.remove('hidden');
+}
+
+function uiDipAction(targetId, kind) {
+  if (!GAME) return;
+  const p = GAME.nations[GAME.playerId];
+  let res;
+  if (kind === 'war') res = declareWar(GAME, p.id, targetId);
+  else if (kind === 'peace') res = proposePeace(GAME, p.id, targetId);
+  else if (kind === 'ally') res = proposeAlliance(GAME, p.id, targetId);
+  else if (kind === 'trade') res = proposeTrade(GAME, p.id, targetId);
+  else if (kind === 'gift') {
+    const amt = prompt('赠送多少金币？（至少 10）', '50');
+    const a = parseInt(amt, 10);
+    res = (isNaN(a) || a < 10) ? { ok: false, msg: '金额无效' } : offerGift(GAME, p.id, targetId, a);
+  }
+  if (res && res.msg) toast(res.msg);
+  if (res && res.ok) {
+    Sfx.select();
+    tutorialCheck(GAME, 'diplomacy');
+    if (kind === 'war') tutorialCheck(GAME, 'war');
+  }
+  uiRefresh(GAME);
+  uiOpenDiplomacy(GAME);
+}
+
+// ---------- 存档界面 ----------
+function uiOpenSave() {
+  renderSaveSlots();
+  $('save-overlay').classList.remove('hidden');
+}
+
+function renderSaveSlots() {
+  const slots = listSlots();
+  const meta = {};
+  slots.forEach(s => meta[s.slot] = s);
+  const html = ['manual1', 'manual2', 'manual3'].map(slot => {
+    const m = meta[slot];
+    const info = m ? '第 ' + m.turn + ' 回合 · ' + m.nation + (m.updated ? ' · ' + new Date(m.updated).toLocaleString() : '') : '空槽位';
+    return '<div class="slot-row">' +
+      '<div class="slot-info">' + info + '</div>' +
+      '<button class="btn small" onclick="doSave(\'' + slot + '\')">保存</button>' +
+      '<button class="btn small"' + (m ? '' : ' disabled') + ' onclick="doLoad(\'' + slot + '\')">读取</button>' +
+      (m ? '<button class="btn small danger" onclick="doDelete(\'' + slot + '\')">删除</button>' : '') +
+      '</div>';
+  }).join('');
+  $('save-body').innerHTML = html;
+}
+
+function doSave(slot) {
+  const res = saveSlot(slot);
+  toast(res.msg);
+  renderSaveSlots();
+}
+function doLoad(slot) {
+  const res = loadSlot(slot);
+  toast(res.msg);
+  if (res.ok) {
+    $('save-overlay').classList.add('hidden');
+    $('menu-overlay').classList.add('hidden');
+    fitCamera(GAME);
+    if (GAME.winner !== null) uiShowVictory(GAME);
+    uiRefresh(GAME);
+  }
+}
+function doDelete(slot) {
+  deleteSlot(slot);
+  renderSaveSlots();
+}
+
+function renderMenuSaveSlots() {
+  const slots = listSlots();
+  const auto = slots.find(s => s.slot === 'auto');
+  let html = '';
+  if (auto) html += '<div class="slot-row"><div class="slot-info">自动存档 · 第 ' + auto.turn + ' 回合 · ' + auto.nation + '</div>' +
+    '<button class="btn small primary" onclick="doLoad(\'auto\')">读取</button></div>';
+  if (slots.length === 0) html = '<div class="hint-text">暂无存档</div>';
+  $('menu-save-slots').innerHTML = html;
+}
+
+// ---------- 结算画面 ----------
+function uiShowVictory(game) {
+  const won = game.winner === game.playerId;
+  const p = game.nations[game.playerId];
+  const winner = game.nations[game.winner];
+  const total = game.map.provinces.length;
+  let counts = {};
+  for (const prov of game.map.provinces) if (prov.owner !== -1) counts[prov.owner] = (counts[prov.owner] || 0) + 1;
+  const pShare = Math.round(((counts[game.playerId] || 0) / total) * 100);
+  const wShare = game.winner !== -1 ? Math.round(((counts[game.winner] || 0) / total) * 100) : 0;
+
+  $('victory-title').textContent = won ? '🏆 胜 利' : '💀 战 败';
+  $('victory-title').className = won ? 'victory-title win' : 'victory-title lose';
+  $('victory-sub').innerHTML = won
+    ? '<p>你以 <b>' + p.name + '</b> 的身份统治了世界！</p>'
+    : (winner ? '<p>胜利者：<b>' + winner.name + '</b>（占领 ' + wShare + '% 省份）</p>' : '<p>战争结束了，无人幸存。</p>');
+  $('victory-stats').innerHTML =
+    '总回合：' + game.turn + '<br/>你的领土占比：' + pShare + '%<br/>你的国库：' + fmt(p.treasury) + ' 金币';
+  $('victory-overlay').classList.remove('hidden');
+  if (won) Sfx.win(); else Sfx.lose();
+}
+
+// ---------- 教程面板 ----------
+function uiShowTutorial(game) {
+  const panel = $('tutorial-panel');
+  if (!game.tutorial) { panel.classList.add('hidden'); return; }
+  const st = tutorialGetStep(game);
+  if (!st) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  $('tutorial-text').innerHTML = st.title + '<br/><span class="tutorial-body">' + st.text + '</span>';
+  $('btn-tut-skip').style.display = 'inline-block';
+  $('btn-tut-next').style.display = st.advance === 'button' ? 'inline-block' : 'none';
+}
+
+function tutorialSkip() {
+  if (!GAME) return;
+  GAME.tutorial = null;
+  $('tutorial-panel').classList.add('hidden');
+  toast('已跳过教程');
+}
+
+</script>
+  <script>
+// tutorial.js — 引导式第一局教程（v3 六边形版）
+'use strict';
+
+// advance: button=点下一步; clickProvince=点击任意省份; build/recruit/move/endTurn/tech/diplomacy/war=对应动作
+const TUTORIAL_STEPS = [
+  { id: 'welcome', title: '👋 欢迎来到帝国前线', text: '你将领导一个国家，征服随机生成的苍澜大陆。<br/>目标：占领 <b>60%</b> 的格子，或消灭所有对手。<br/>先看地图：彩色格子是各国领土，灰色是无政权或土著之地，蓝色是海洋。', advance: 'button' },
+  { id: 'viewCountry', title: '🌍 看看你的国家', text: '你的省份会以你的国家颜色显示，首都标有 ★。<br/>点击任意省份，左侧会出现它的详情。试试看。', advance: 'clickProvince' },
+  { id: 'build', title: '🏗️ 建造建筑', text: '国库里有金币。点击你的一个省份，在左侧「建造」区点 <b>农场</b>（增加人口和收入）。', advance: 'build', target: null },
+  { id: 'recruit', title: '⚔️ 招募军队', text: '点击你首都所在的省份，在「征募」区招募一支 <b>刀剑手</b>（一支 400 名士兵）保护你的领地。', advance: 'recruit', target: null },
+  { id: 'expand', title: '🏴 殖民扩张', text: '点击己方有军队的省份选中（自动调派），再点击<b>相邻的灰色省份</b>派出士兵驻守；然后在左侧点 <b>🏴 殖民</b> 按钮，花费 💰100 正式占领它！', advance: 'colonize', target: null },
+  { id: 'endTurn', title: '⏭️ 结束回合', text: '按 <b>E</b> 或点底部「结束回合」。AI 国家也会行动，然后进入下一回合，你的国库会增长。', advance: 'endTurn' },
+  { id: 'tech', title: '🔬 研究科技', text: '点左侧「打开科技树」，向「军事」线投入金币，解锁更强的步兵、火枪手甚至攻城车。', advance: 'tech' },
+  { id: 'diplomacy', title: '🌐 外交', text: '打开顶部「外交」面板，与一个邻国建立<b>贸易协定</b>（+金币）或<b>结盟</b>（安全）。', advance: 'diplomacy' },
+  { id: 'war', title: '⚔️ 开战与征服', text: '在外交面板向一个相邻国家<b>宣战</b>，然后用军队进攻它的省份！占领敌省能直接扩张你的版图。', advance: 'war' },
+  { id: 'finish', title: '🏆 你的时代来了', text: '继续扩张、经营、外交、征服。达成 60% 领土或统一世界即可胜利！<br/>教程到此结束，尽情征服吧！', advance: 'button' },
+];
+
+function tutorialGetStep(game) {
+  if (!game || !game.tutorial) return null;
+  return TUTORIAL_STEPS[game.tutorial.step] || null;
+}
+
+function tutorialAdvance(game) {
+  if (!game.tutorial) return;
+  game.tutorial.step++;
+  if (game.tutorial.step >= TUTORIAL_STEPS.length) {
+    game.tutorial = null;
+    toast('🎉 教程完成！去征服世界吧');
+    $('tutorial-panel').classList.add('hidden');
+    return;
+  }
+  uiShowTutorial(game);
+  uiRefresh(game);
+}
+
+// 教程完成检测：在各动作处 hook
+function tutorialCheck(game, action) {
+  if (!game || !game.tutorial) return;
+  const st = tutorialGetStep(game);
+  if (!st) return;
+  if (st.advance !== action) return;
+  toast('✅ ' + st.title);
+  tutorialAdvance(game);
+}
+
+// 教程目标省份（用于高亮）
+function tutorialTargetProvince(game) {
+  const st = tutorialGetStep(game);
+  if (!st || !st.target) return null;
+  for (const prov of game.map.provinces) {
+    if (prov.name === st.target) return prov;
+  }
+  return null;
+}
+
+// 开始教程游戏（使用完整世界地图 + 引导）
+function startTutorialGame() {
+  startNewGame({
+    difficulty: 'easy',
+    turnCap: 0,
+    playerNation: menuSelection.nation,
+    scenario: 'free',
+  }, true);
+  const p = GAME.nations[GAME.playerId];
+  p.treasury = 600; // 教程福利，保证步骤可完成
+  uiRefresh(GAME);
+  uiShowTutorial(GAME);
+  Sfx.select();
+}
+
+</script>
+  <script>
+// audio.js — 轻量 WebAudio 音效（无外部资源）
+'use strict';
+
+let audioCtx = null;
+let SOUND_ON = true;
+
+function ensureAudio() {
+  if (!SOUND_ON) return null;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  } catch (e) {
+    return null;
+  }
+}
+
+function playTone(freq, dur, type, vol) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol || 0.06, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + dur);
+  } catch (e) { /* 忽略 */ }
+}
+
+const Sfx = {
+  click()   { playTone(620, 0.07, 'triangle', 0.05); },
+  select()  { playTone(460, 0.10, 'sine', 0.05); },
+  move()    { playTone(540, 0.08, 'sine', 0.05); },
+  attack()  { playTone(170, 0.28, 'sawtooth', 0.07); playTone(120, 0.3, 'square', 0.05); },
+  build()   { playTone(700, 0.12, 'triangle', 0.06); },
+  recruit() { playTone(780, 0.10, 'square', 0.05); },
+  turn()    { playTone(880, 0.14, 'sine', 0.06); },
+  win()     { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.25, 'triangle', 0.08), i * 140)); },
+  lose()    { [392, 330, 262].forEach((f, i) => setTimeout(() => playTone(f, 0.32, 'sine', 0.07), i * 200)); },
+};
+
+</script>
+  <script>
+// main.js — 入口、输入交互、回合流程、主循环（v3 六边形版）
+'use strict';
+
+// 启动
+function boot() {
+  uiSetupMenu();
+  bindTopButtons();
+  bindCanvas();
+  bindHotkeys();
+  bindSlider();
+  renderMenuSaveSlots();
+  $('menu-overlay').classList.remove('hidden');
+  requestAnimationFrame(loop);
+}
+
+function loop() {
+  try {
+    render(GAME);
+  } catch (e) {
+    // 渲染异常不能中断动画循环，否则画面会永久冻结
+    if (window.__renderErr !== e && window.__renderErr !== (e && e.stack)) {
+      window.__renderErr = (e && e.stack) || e;
+      console.error('渲染异常（已跳过该帧）：', e);
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+// 开始新游戏；tutorialMode=true 时进入引导教程
+function startNewGame(settings, tutorialMode) {
+  GAME = createGame(settings);
+  GAME.tutorial = tutorialMode ? { step: 0 } : null;
+  $('menu-overlay').classList.add('hidden');
+  $('diplomacy-overlay').classList.add('hidden');
+  $('save-overlay').classList.add('hidden');
+  $('victory-overlay').classList.add('hidden');
+  $('tech-overlay').classList.add('hidden');
+  $('tutorial-panel').classList.add('hidden');
+  fitCamera(GAME);
+  if (GAME.placeCapital) {
+    // 自选首都：显示整图，提示玩家点空地选首都
+    $('phase-banner').textContent = '🏗️ 点击一块空地选择你的首都位置，然后在左侧点「建立首都」';
+  } else if (!tutorialMode) {
+    // 开局自动滑到所选国家的首都地块（教程模式保持整图视野，便于引导）
+    const cap = nationCapitalProvince(GAME, GAME.nations[GAME.playerId]);
+    if (cap) centerCameraOnProvince(GAME, cap, 0.9);
+  }
+  uiRefresh(GAME);
+  if (tutorialMode) uiShowTutorial(GAME);
+  Sfx.select();
+}
+
+// 结束回合
+function doEndTurn() {
+  if (!GAME || GAME.phase !== 'player' || GAME.winner !== null) return;
+  $('phase-banner').textContent = '🤖 AI 行动中…';
+  setTimeout(() => {
+    const cont = endTurn();
+    $('phase-banner').textContent = '';
+    if (GAME.winner !== null) {
+      uiShowVictory(GAME);
+    } else if (cont) {
+      Sfx.turn();
+    }
+    uiRefresh(GAME);
+    tutorialCheck(GAME, 'endTurn');
+  }, 30);
+}
+
+// ---------- 顶部按钮 ----------
+function bindTopButtons() {
+  // 左右面板折叠
+  $('btn-toggle-sidebar').addEventListener('click', () => {
+    const c = $('sidebar').classList.toggle('collapsed');
+    $('btn-toggle-sidebar').textContent = c ? '▶ 面板' : '◀ 面板';
+    Sfx.click();
+  });
+  $('btn-toggle-event').addEventListener('click', () => {
+    const c = $('event-panel').classList.toggle('collapsed');
+    $('btn-toggle-event').textContent = c ? '日志 ◀' : '日志 ▶';
+    Sfx.click();
+  });
+  $('btn-diplomacy').addEventListener('click', () => {
+    if (!GAME) return;
+    uiOpenDiplomacy(GAME);
+    Sfx.click();
+  });
+  $('btn-save').addEventListener('click', () => {
+    if (!GAME) return;
+    uiOpenSave();
+    Sfx.click();
+  });
+  $('btn-sound').addEventListener('click', () => {
+    SOUND_ON = !SOUND_ON;
+    $('btn-sound').textContent = SOUND_ON ? '🔊' : '🔇';
+    if (SOUND_ON) Sfx.click();
+  });
+  $('btn-menu').addEventListener('click', () => {
+    $('menu-overlay').classList.remove('hidden');
+    $('btn-continue').style.display = GAME ? 'block' : 'none';
+    renderMenuSaveSlots();
+    Sfx.click();
+  });
+  $('btn-close-diplomacy').addEventListener('click', () => $('diplomacy-overlay').classList.add('hidden'));
+  $('btn-close-save').addEventListener('click', () => $('save-overlay').classList.add('hidden'));
+  $('btn-close-tech').addEventListener('click', () => $('tech-overlay').classList.add('hidden'));
+  $('btn-close-policy').addEventListener('click', () => $('policy-overlay').classList.add('hidden'));
+  $('btn-achievements').addEventListener('click', () => { uiOpenAchievements(); Sfx.click(); });
+  $('btn-close-achievements').addEventListener('click', () => $('achievements-overlay').classList.add('hidden'));
+  $('btn-restart').addEventListener('click', () => {
+    $('victory-overlay').classList.add('hidden');
+    $('menu-overlay').classList.remove('hidden');
+    $('btn-continue').style.display = 'none';
+    renderMenuSaveSlots();
+  });
+  $('btn-endturn').addEventListener('click', doEndTurn);
+  $('btn-tut-skip').addEventListener('click', tutorialSkip);
+  $('btn-tut-next').addEventListener('click', () => {
+    if (GAME) tutorialAdvance(GAME);
+  });
+}
+
+// ---------- 画布交互 ----------
+function bindCanvas() {
+  const canvas = getCanvas();
+  let dragging = false, moved = false, lastX = 0, lastY = 0;
+
+  canvas.addEventListener('mousedown', e => {
+    dragging = true;
+    moved = false;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+    CAMERA.x += dx;
+    CAMERA.y += dy;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  window.addEventListener('mouseup', e => {
+    if (dragging && !moved) onCanvasClick(e);
+    dragging = false;
+  });
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? 1.16 : 1 / 1.16;
+    zoomAt(sx, sy, factor);
+  }, { passive: false });
+
+  canvas.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (GAME) { GAME.active = null; uiRefresh(GAME); }
+  });
+}
+
+function zoomAt(sx, sy, factor) {
+  const old = CAMERA.zoom;
+  const nz = clamp(CAMERA.zoom * factor, 0.15, 3.0);
+  CAMERA.x = sx - (sx - CAMERA.x) * (nz / old);
+  CAMERA.y = sy - (sy - CAMERA.y) * (nz / old);
+  CAMERA.zoom = nz;
+}
+
+// 进攻/海运/拆分后统一收尾：提示、音效、刷新、教程、胜利判定
+function finishMove(game, p, ap, prov, res) {
+  if (!res) return;
+  toast(res.msg);
+  if (res.msg.indexOf('攻占') === 0 || res.msg.indexOf('被击退') !== -1) Sfx.attack();
+  else if (res.ok) Sfx.move();
+  else Sfx.click();
+  if (ap.army.length === 0) game.active = null;
+  game.selected = prov.id;
+  uiRefresh(game);
+  tutorialCheck(game, 'move');
+  if (checkVictory(game) !== null) uiShowVictory(game);
+}
+
+// 屏幕点击 → 命中六边形格子（格子坐标 -> 省份 id 索引）
+function onCanvasClick(e) {
+  if (!GAME) return;
+  if (GAME.phase !== 'player') {
+    if (GAME.phase === 'place_capital') handleCapitalPick(GAME, e);
+    return;
+  }
+  const rect = getCanvas().getBoundingClientRect();
+  const h = screenToHex(e.clientX - rect.left, e.clientY - rect.top);
+  const pid = GAME.map.provAtHex[h.q + ',' + h.r];
+  if (pid === undefined || pid === null) return;   // 海洋或无格子
+  handleProvinceClick(GAME, provAt(GAME, pid));
+}
+
+// 自选首都：点击空地 → 设为待建首都位置
+function handleCapitalPick(game, e) {
+  const rect = getCanvas().getBoundingClientRect();
+  const h = screenToHex(e.clientX - rect.left, e.clientY - rect.top);
+  const pid = game.map.provAtHex[h.q + ',' + h.r];
+  if (pid === undefined || pid === null) { toast('请点击陆地'); return; }
+  const prov = provAt(game, pid);
+  if (prov.owner !== -1 || prov.army.length) { toast('请选择无主且无守军的空地'); return; }
+  game.selected = prov.id;
+  game.pendingCapital = prov.id;
+  uiRefresh(game);
+  tutorialCheck(game, 'clickProvince');
+}
+
+// 目标格是否敌对（敌国领土，或非己方军队驻守的无主地/土著）
+function isHostileProv(game, prov) {
+  if (prov.owner !== -1) return prov.owner !== game.playerId;
+  return prov.army.length > 0 && prov.garrisonOwner !== game.playerId;
+}
+
+function handleProvinceClick(game, prov) {
+  const p = game.nations[game.playerId];
+  Sfx.click();
+
+  // 有已调派军队：点击可达省份 → 进攻 / 拆分派遣 / 海运
+  if (game.active !== null) {
+    const ap = provAt(game, game.active);
+    if (ap && ap.army.length && (ap.neighbors.includes(prov.id) || sameSea(ap, prov))) {
+      if (isHostileProv(game, prov)) {
+        // 敌省/土著 → 进攻
+        finishMove(game, p, ap, prov, tryAdvance(game, p, ap, prov));
+        return;
+      }
+      if (ap.neighbors.includes(prov.id)) {
+        // 己方或无主地陆邻 → 滑条选派遣士兵数（step=1 确保能派全部；最少派 100）
+        const avail = totalSoldiers(ap);
+        const lo = Math.min(100, Math.max(1, avail));
+        openSlider('派遣士兵', '派往 ' + prov.name + '（可派 ' + lo + '~' + avail + ' 名）', lo, Math.max(1, avail), 1,
+          lo,
+          (count) => finishMove(game, p, ap, prov, splitArmy(game, p, ap, prov, count)));
+        return;
+      }
+      // 同海区海运 → 整队渡海
+      finishMove(game, p, ap, prov, tryAdvance(game, p, ap, prov));
+      return;
+    }
+    // 点击己方另一军队省 → 切换调派
+    if (provOwnerId(prov) === game.playerId && prov.army.length) {
+      game.active = prov.id;
+      game.selected = prov.id;
+      uiRefresh(game);
+      return;
+    }
+    game.active = null;
+  }
+
+  // 不再自动调派：需点「调派这支军队」按钮后再点目标格（左键确认、右键取消）
+  game.selected = prov.id;
+  uiRefresh(game);
+  tutorialCheck(game, 'clickProvince');
+}
+
+// ---------- 快捷键 ----------
+function bindHotkeys() {
+  window.addEventListener('keydown', e => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
+    if (e.key === 'Escape') {
+      if (GAME) { GAME.active = null; uiRefresh(GAME); }
+      return;
+    }
+    if (!GAME || GAME.phase !== 'player' || GAME.winner !== null) return;
+    if (e.key === 'e' || e.key === 'E') doEndTurn();
+    else if (e.key === 'd' || e.key === 'D') uiOpenDiplomacy(GAME);
+  });
+}
+
+window.addEventListener('DOMContentLoaded', boot);
+
+</script>
+</body>
+</html>
